@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "165943793003",
-    "project_id": "homeilove-uk",
-    "storage_bucket": "homeilove-uk.firebasestorage.app"
+    "project_number": "798901347695",
+    "project_id": "sweetghar-c8520",
+    "storage_bucket": "sweetghar-c8520.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:165943793003:android:f66880a0d85ecbf060282e",
+        "mobilesdk_app_id": "1:798901347695:android:237599416d373f762fb49a",
         "android_client_info": {
-          "package_name": "com.revnosoft.homeilove.uk"
+          "package_name": "com.revnosoft.sweetghar"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCDQt9fh1FiI1f55y7tGYKeSrH1I7XSPW0"
+          "current_key": "AIzaSyDe19msWIH9XTFr43AVZyqoF8htQ4NI_Fc"
         }
       ],
       "services": {

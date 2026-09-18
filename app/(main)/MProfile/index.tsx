@@ -836,7 +836,7 @@ const Index = () => {
                 initialValues={{
                   recepient_email: "",
                   message: "",
-                  link: `https://homeilove.co.uk/postRedirect?post_id=${id}&&type=${"profile"}&&profile_type=${Profiletype}`,
+                  link: `https://sweetghar.com/postRedirect?post_id=${id}&&type=${"profile"}&&profile_type=${Profiletype}`,
                   post_id: id,
                   type: Profiletype,
                 }}

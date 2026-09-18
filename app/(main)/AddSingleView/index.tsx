@@ -1056,7 +1056,7 @@ const index = () => {
             <Formik
               initialValues={{
                 visitor_email: "",
-                receiver_email: "ahsanmalik89939@gmail.com",
+                receiver_email: data?.posted_by?.email,
                 visitor_name: "",
                 visitor_contact: "",
                 visitor_message: "",
@@ -1331,7 +1331,7 @@ const index = () => {
         initialValues={{
           recepient_email: "",
           message: "",
-          link:`https://homeilove.co.uk/postRedirect?post_id=${type==="community"?data?.post?.post_community_id:data?.post?.post_property_id}&&type=${type==="community"?"community":"property"}`,
+          link:`https://sweetghar.com/postRedirect?post_id=${type==="community"?data?.post?.post_community_id:data?.post?.post_property_id}&&type=${type==="community"?"community":"property"}`,
           post_id:type==="community"?data?.post?.post_community_id:data?.post?.post_property_id,
           type:type,
         }}

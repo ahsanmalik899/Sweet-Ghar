@@ -590,7 +590,7 @@ const [menuPost, setMenuPost] = useState<number | null>(null);
         initialValues={{
           recepient_email: "",
           message: "",
-          link:`https://homeilove.co.uk/NewsFeedSingelView?post_id=${shareData?.id}`,
+          link:`https://sweetghar.com/NewsFeedSingelView?post_id=${shareData?.id}`,
           post_id:shareData?.id,
           post_type:shareData?.type,
           post_image:shareData?.images?.[0]?? "",

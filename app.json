@@ -1,8 +1,8 @@
 {
   "expo": {
-    "scheme": "homeiloveuk",
-    "name": "HomeILove.UK",
-    "slug": "homeilove-uk",
+    "scheme": "sweetghar",
+    "name": "Sweet Ghar",
+    "slug": "sweet-ghar",
     "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icons/app-icon 1024x1024.png",
@@ -24,9 +24,9 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.revnosoft.homeilove.uk",
+      "bundleIdentifier": "com.revnosoft.sweetghar",
       "associatedDomains": [
-        "applinks:homeilove.co.uk"
+        "applinks:sweetghar.com"
       ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -52,7 +52,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "homeilove.co.uk",
+              "host": "sweetghar.com",
               "pathPrefix": "/CreateNewpass"
             }
           ],
@@ -67,7 +67,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "homeilove.co.uk",
+              "host": "sweetghar.com",
               "pathPrefix": "/Account"
             }
           ],
@@ -82,7 +82,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "homeilove.co.uk",
+              "host": "sweetghar.com",
               "pathPrefix": "/NewsFeedSingelView"
             }
           ],
@@ -97,7 +97,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "homeilove.co.uk",
+              "host": "sweetghar.com",
               "pathPrefix": "/AddSingleView"
             }
           ],
@@ -112,7 +112,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "homeilove.co.uk",
+              "host": "sweetghar.com",
               "pathPrefix": "/postRedirect"
             }
           ],
@@ -122,7 +122,7 @@
           ]
         }
       ],
-      "package": "com.revnosoft.homeilove.uk"
+      "package": "com.revnosoft.sweetghar"
     },
     "web": {
       "favicon": "./assets/images/favicon.png",
@@ -139,9 +139,9 @@
       "router": {
         "origin": false
       },
-      "GOOGLE_MAPS_API_KEY": "AIzaSyCcUdqUPvVaJYw1IcCL1PvsUQJ99-tuHiY",
+      "GOOGLE_MAPS_API_KEY": "AIzaSyBaSaRVNgsBZTflG9WrJ7AwVm2cdJ5NerE",
       "eas": {
-        "projectId": "AIzaSyBaSaRVNgsBZTflG9WrJ7AwVm2cdJ5NerE"
+        "projectId": "ed7335d6-7a0e-4200-90db-3f7a4f6ab4c0"
       }
     }
   }
