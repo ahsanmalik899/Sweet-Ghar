@@ -44,6 +44,15 @@ const index = () => {
         subHeading: "Re-built for sale",
         Picture: BuyAll
       }
+      break;
+          case "Holidays":
+      dataBuy = {
+        mainHeading: "Find your perfect ",
+        redText: "HOLIDAY",
+        endText: " home",
+        subHeading: "Holiday properties for sale",
+        Picture: BuyAll,
+      };
       break;}
   return (
       <ScrollView>

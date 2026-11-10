@@ -46,7 +46,7 @@ const MyAlerts = ({ setVisible }: { setVisible: (value: boolean) => void }) => {
 
 
       <Text style={styles.info}>
-        Price Range:<Text style={{color:Colors.light.red}}> £{item.min_price?.toLocaleString()} - £
+        Price Range:<Text style={{color:Colors.light.red}}> PKR {item.min_price?.toLocaleString()} - PKR
         {item.max_price?.toLocaleString()}</Text>
       </Text>
 

@@ -29,6 +29,7 @@ const index = ({
   name,
   setname,
   type,
+  
 }: filtertype) => {
   const toggleValue = (
     field: string,
@@ -157,13 +158,125 @@ const index = ({
 
          
         </View>
+{values.sub_type === "material_supplier" && (
+  <View style={styles.optionsGrid}>
+    {[
+      { label: "All Suppliers", value: "All Suppliers" },
+      { label: "Building Materials", value: "Building Materials" },
+      { label: "Tiles & Flooring", value: "Tiles, Marble & Flooring" },
+      { label: "Wall Finishes", value: "Paint & Wall Finishes" },
+      { label: "Doors & Windows", value: "Doors, Windows & Glass" },
+      {
+        label: "Kitchen & Wardrobe",
+        value: "Kitchen & Wardrobe Suppliers",
+      },
+      {
+        label: "Sanitary & Bathroom",
+        value: "Sanitary & Bathroom",
+      },
+      {
+        label: "Electrical & Lighting",
+        value: "Electrical & Lighting",
+      },
+      {
+        label: "Plumbing & Water",
+        value: "Plumbing & Water",
+      },
+      {
+        label: "Home Appliances",
+        value: "Home Appliances",
+      },
+    ].map((item) => {
+      const selected = values.material === item.value;
 
+      return (
+        <TouchableOpacity
+          key={item.value}
+          activeOpacity={0.8}
+          style={[
+            styles.filterOption,
+            selected && styles.selectedOption,
+          ]}
+          onPress={() => setFieldValue("material", item.value)}
+        >
+          <Text
+            numberOfLines={2}
+            style={[
+              styles.optionText,
+              selected && styles.selectedText,
+            ]}
+          >
+            {item.label}
+          </Text>
+        </TouchableOpacity>
+      );
+    })}
+  </View>
+)}
+{values.sub_type === "services" && (
+  <View style={{ marginTop: vs(15) }}>
+    <Text style={styles.filterHeading}>Services</Text>
+
+    <View style={styles.optionsGrid}>
+      {[
+        { label: "All Services", value: "All Service Providers" },
+        { label: "Construction", value: "Construction & Renovation" },
+        { label: "Architects & Design", value: "Architects & Design" },
+        { label: "Surveying", value: "Surveying & Inspection" },
+        { label: "Carpentry", value: "Carpentry & Woodwork" },
+        {
+          label: "Kitchen & Wardrobe",
+          value: "Kitchen & Wardrobe Services",
+        },
+        {
+          label: "Aluminium & Metal",
+          value: "Glass, Aluminium & Metal Work",
+        },
+        { label: "Solar Services", value: "Solar & Energy Services" },
+        { label: "HVAC & Cooling", value: "HVAC & Cooling" },
+        { label: "Security", value: "Security & Smart Home" },
+        {
+          label: "Maintenance",
+          value: "Outdoor & Property Maintenance",
+        },
+        { label: "Moving & Storage", value: "Moving & Storage" },
+      ].map((item) => {
+        const selected = values.services === item.value;
+
+        return (
+          <TouchableOpacity
+            key={item.value}
+            activeOpacity={0.8}
+            style={[
+              styles.filterOption,
+              selected && styles.selectedOption,
+            ]}
+            onPress={() => setFieldValue("services", item.value)}
+          >
+            <Text
+              numberOfLines={2}
+              style={[
+                styles.optionText,
+                selected && styles.selectedText,
+              ]}
+            >
+              {item.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  </View>
+)}
         <LargeButton
   handleSubmit={() => {
 
     const empty = {
-      radius: "",
-    };
+  radius: "",
+  material: "All Suppliers",
+  services: "All Service Providers",
+  sub_type: values.sub_type,
+};
 
     resetForm({ values: empty });
 
@@ -238,7 +351,58 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "white",
   },
+optionsGrid: {
+  flexDirection: "row",
+  flexWrap: "wrap",
+  justifyContent: "space-between",
+  marginTop: vs(12),
+},
 
+filterOption: {
+  width: "48%",
+  minHeight: vs(48),
+
+  paddingHorizontal: hs(10),
+  paddingVertical: vs(8),
+
+  borderRadius: ms(10),
+  borderWidth: 1,
+  borderColor: "#E2E2E2",
+
+  backgroundColor: "#FFFFFF",
+
+  alignItems: "center",
+  justifyContent: "center",
+
+  marginBottom: vs(10),
+
+  shadowColor: "#000",
+  shadowOffset: {
+    width: 0,
+    height: 1,
+  },
+  shadowOpacity: 0.04,
+  shadowRadius: 2,
+  elevation: 1,
+},
+
+selectedOption: {
+  backgroundColor: Colors.light.DarkGreen,
+  borderColor: Colors.light.DarkGreen,
+},
+
+optionText: {
+  fontSize: ms(11),
+  color: "#444444",
+  fontFamily: "PopinRegula",
+  textAlign: "center",
+  lineHeight: ms(16),
+},
+
+selectedText: {
+  color: "#FFFFFF",
+  fontWeight: "600",
+},
   counterValue: {
     width: hs(80),
     alignItems: "center",
@@ -249,4 +413,18 @@ const styles = StyleSheet.create({
     fontSize: ms(24),
     fontWeight: "700",
   },
+  filterHeading: {
+  fontSize: ms(14),
+  fontWeight: "700",
+  marginTop: vs(18),
+  marginBottom: vs(10),
+  fontFamily: "PopinRegula",
+},
+
+optionsRow: {
+  flexDirection: "row",
+  flexWrap: "wrap",
+  gap: hs(8),
+},
+
 });

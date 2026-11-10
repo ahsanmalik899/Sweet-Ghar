@@ -37,9 +37,10 @@ export const MainApi = createApi({
     "conversations",
     "GetReviews",
     "YourPosts",
-    "singlePost"
+    "singlePost",
+     "userRevies",
   ],
-  baseQuery: fetchBaseQuery({ baseUrl: "https://sweetghar.com/api/" }),
+  baseQuery: fetchBaseQuery({ baseUrl: "https://www.sweetghar.com/api/" }),
   endpoints: (builder) => ({
     getYourpost: builder.query<FeedResponse, GetPostType>({
       query: ({ userid, page }) => ({
@@ -470,6 +471,9 @@ export const MainApi = createApi({
         radius,
         sort,
         user_id,
+         material,
+        services,
+        sub_type,
       }) => ({
         url: `GetProfilesListing`,
         method: "GET",
@@ -486,9 +490,24 @@ export const MainApi = createApi({
           radius,
           sort,
           user_id,
+           material,
+        services,
+        sub_type,
         },
       }),
     }),
+    getProfileReviews: builder.query<any,
+  {
+    receiver_profile_id: string;
+    receiver_profile_type: string;
+  }>({
+  query: (params) => ({
+    url: "getProfileReviews",
+    method: "GET",
+    params,
+  }),
+   providesTags:["userRevies"]
+}),
     insertInquiry: builder.mutation<any, any>({
       query: (formatdata: FormData) => ({
         url: "insertInquiry",
@@ -740,13 +759,7 @@ export const MainApi = createApi({
         body: data,
       }),
     }),
-    PaybyPaypal: builder.mutation<any, any>({
-      query: (data) => ({
-        url: "create-paypal-order",
-        method: "POST",
-        body: data,
-      }),
-    }),
+
     DeletReview: builder.mutation<any, any>({
       query: (data) => ({
         url: "deleteReview",
@@ -766,14 +779,21 @@ export const MainApi = createApi({
       query: ({ user_id }) =>
         `getUnreadNotificationsCountApi?user_id=${user_id}`,
     }),
+PaybyAlfalah: builder.mutation<any, any>({
+  query: (data) => ({
+    url: "createPaypalOrder",
+    method: "POST",
+    body: data,
+  }),
+}),
 
-    CapturePayment: builder.mutation<any, any>({
-      query: (data) => ({
-        url: "capturePaypalOrder",
-        method: "POST",
-        body: data,
-      }),
-    }),
+CaptureAlfalahPayment: builder.mutation<any, any>({
+  query: (data) => ({
+    url: "capturePaypalOrder",
+    method: "POST",
+    body: data,
+  }),
+}),
     getUserWallet: builder.query<any, any>({
       query: ({ id }) => ({
         url: `getUserWallet?user_id=${id}`,
@@ -843,7 +863,7 @@ export const MainApi = createApi({
         method: "POST",
         body: data,
       }),
-      invalidatesTags:["checkReview","myProfile"]
+      invalidatesTags:["checkReview","myProfile","userRevies"]
     }),
     updateReviewApi: builder.mutation({
       query: ({ body }) => ({
@@ -851,6 +871,7 @@ export const MainApi = createApi({
         method: "POST",
         body,
       }),
+           invalidatesTags:["userRevies"]
     }),
     updateAccountApi: builder.mutation({
       query: (formatdata:FormData) => ({
@@ -1078,6 +1099,22 @@ editCommentApi: builder.mutation({
     body,
   }),
 }),
+verifyAlfalahPayment:
+  builder.mutation<
+    any,
+    {
+      order_id: string;
+    }
+  >({
+    query: (body) => ({
+      url:
+        "alfalah/payment/verify",
+
+      method: "POST",
+
+      body,
+    }),
+  }),
 calculateLoanApi: builder.mutation({
   query: (body) => ({
     url: "morgageCalculator", 
@@ -1091,6 +1128,27 @@ getLoanInterestRate: builder.query<any, void>({
     method: "GET",
   }),
 }),
+paybyEasypaisa: builder.mutation({
+  query: (data) => ({
+    url: "easypaisa/create-payment",
+    method: "POST",
+    body: data,
+  }),
+}),
+
+captureEasypaisaPayment: builder.mutation({
+  query: (data) => ({
+    url: "easypaisa/capture-payment",
+    method: "POST",
+    body: data,
+  }),
+}),
+getBundlesPrice: builder.query({
+  query: () => ({
+    url: "bundles-price",
+    method: "GET",
+  }),
+}),
   }),
 });
 
@@ -1098,6 +1156,10 @@ export const {
   useCalculateLoanApiMutation,
   useGetLoanInterestRateQuery,
   useGetYourpostQuery,
+  useGetBundlesPriceQuery,
+  usePaybyEasypaisaMutation,
+useCaptureEasypaisaPaymentMutation,
+   useVerifyAlfalahPaymentMutation,
   useGetContentpostQuery,
   useGetHomepostQuery,
   useCreateProfileMutation,
@@ -1163,11 +1225,12 @@ export const {
   useGetChatListApiQuery,
   useHidePostMutation,
   useSaveNotificationTokenMutation,
-  usePaybyPaypalMutation,
+    useGetProfileReviewsQuery,
   useDeletReviewMutation,
   useReviseReviewMutation,
   useGetUnreadNotificationsCountQuery,
-  useCapturePaymentMutation,
+  usePaybyAlfalahMutation,
+useCaptureAlfalahPaymentMutation,
   useGetUserWalletQuery,
   useSendMessageApiMutation,
   useGetMessagesApiQuery,

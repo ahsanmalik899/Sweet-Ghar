@@ -25,3 +25,5 @@ android
 ios
 
 *-firebase-adminsdk-*.json
+*.aab
+*.apk

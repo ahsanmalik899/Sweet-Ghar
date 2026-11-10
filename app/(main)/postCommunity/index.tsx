@@ -1,17 +1,17 @@
 import {
-  useCapturePaymentMutation,
+  useCaptureAlfalahPaymentMutation,
   useGetDataForEditQuery,
   useGetPriceQuery,
   useGetProfilesQuery,
   useGetUserWalletQuery,
   usePostCommunityMutation,
   useUpdateCommunityMutation,
+  useVerifyAlfalahPaymentMutation
 } from "@/store/api/user/MainApi";
 import { userdata } from "@/store/slices/selector/user";
 import Bunchers from "@assets/CreateProfile/broucher.svg";
 import ImageUpload from "@assets/CreateProfile/uploadimage.svg";
 import Profilelogo from "@assets/CreateProfile/uploadprofilewithcircle.svg";
-import Paypal from "@assets/SideBar/paypal-icon.svg";
 import Uploadlogo from "@assets/signupbg/solar_upload-bold-duotone.svg";
 import { MaterialIcons } from "@expo/vector-icons";
 import { FlashList } from "@shopify/flash-list";
@@ -24,7 +24,7 @@ import { FormikInput } from "@src/components/globals/FormictInput";
 import HeaderWithBack from "@src/components/globals/HeaderWithBack";
 import LargeButton from "@src/components/globals/LaregeButton";
 import Loading from "@src/components/globals/Loading";
-import PapPalPayment from "@src/components/globals/PapPalPayment";
+import AlfalahPayment from "@src/components/globals/PapPalPayment";
 import PdfPicker from "@src/components/globals/PdfPicker";
 import SelecteAdType from "@src/components/globals/TablikeButton";
 import UploadPic from "@src/components/globals/UploadPic";
@@ -238,7 +238,8 @@ const index = () => {
             .required("Area is required")
             .typeError("Land area must be a number")
         : Yup.string().nullable(),
-
+order_id: Yup.string().nullable(),
+amount: Yup.mixed().nullable(),
     price1: Yup.number()
       .required("Price is required")
       .positive("Price must be positive"),
@@ -405,6 +406,9 @@ const index = () => {
           user_id: editData.post.user_id,
           user_type: editData.post.user_type,
           payment_method: editData.post.payment_method,
+          order_id: "",
+amount: "",
+
           ad_life: editData.post.ad_life || 1,
           ad_by: editData.post.ad_by || "",
           post_status: editData.post.post_status || "Pending",
@@ -484,6 +488,9 @@ const index = () => {
           user_id: user.id,
           user_type: user.user_type,
           payment_method: "",
+          order_id: "",
+amount: "",
+
           ad_life: 1,
           ad_by: user.user_type === "Business" ? "" : "Private",
           post_status: "Pending",
@@ -538,8 +545,15 @@ const index = () => {
           floorimg: [],
           broucherimg: [],
         };
-  const [capturePayment, { isLoading: isCapturing }] =
-    useCapturePaymentMutation();
+ const [
+  capturePayment,
+  { isLoading: isCapturing },
+] = useCaptureAlfalahPaymentMutation();
+
+const [
+  verifyAlfalahPayment,
+  { isLoading: isVerifyingAlfalah },
+] = useVerifyAlfalahPaymentMutation();
   const pickImage = async (setFieldValue: any, name: string) => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
@@ -613,6 +627,21 @@ const index = () => {
               validationSchema={PostCommunitySchema}
               onSubmit={async (values) => {
                 try {
+                  const needsBankPayment =
+  !edit &&
+  values.post_type === "Trending" &&
+  values.payment_method !== "Wallet";
+
+if (
+  needsBankPayment &&
+  !values.order_id
+) {
+  renderToastError(
+    "Please complete payment before posting the community."
+  );
+
+  return;
+}
                   const formData = new FormData();
                   const existingPDFs: string[] = [];
                   Object.keys(values).forEach((key) => {
@@ -1518,6 +1547,38 @@ const index = () => {
                               </View>
                             </TouchableOpacity>
                           )}
+                           {(data?.profiles_exist?.material_supplier?.exists && data?.profiles_exist?.material_supplier?.status==="Active") && (
+                                                      <TouchableOpacity
+                                                       activeOpacity={1}
+                                                        onPress={() => {
+                                                          setFieldValue(
+                                                            "ad_by",
+                                                            values.ad_by === "Material_supplier" ? "" : "Material_supplier"
+                                                          );
+                                                        }}
+                                                      >
+                                                        <View className="flex-row mt-4 items-center">
+                                                          <MaterialIcons
+                                                            size={25}
+                                                            color={Colors.light.DarkGreen}
+                                                            name={
+                                                              values.ad_by === "Material_supplier"
+                                                                ? "check-box"
+                                                                : "check-box-outline-blank"
+                                                            }
+                                                          />
+                                                          <Text
+                                                            style={{
+                                                              marginLeft: hs(5),
+                                                              fontWeight: "500",
+                                                              fontFamily: "PopinRegula",
+                                                            }}
+                                                          >
+                                                    Material Supplier
+                                                          </Text>
+                                                        </View>
+                                                      </TouchableOpacity>
+                                                    )}
                           {touched && errors && (
                             <Text
                               style={{
@@ -1722,69 +1783,159 @@ const index = () => {
                                 Pay and Ad post Atomaticlly
                               </Text>
 
-                              <TouchableOpacity
-                               activeOpacity={1}
-                                className="mb-4"
-                                style={styles.paypalMainButton}
-                                onPress={async () => {
-                                  // run form validation
-                                  const errors = await validateForm();
+                            <TouchableOpacity
+  activeOpacity={0.85}
+  className="mb-4"
+  style={styles.paypalMainButton}
+  onPress={async () => {
+    const errors = await validateForm();
 
-                                  // mark fields touched so errors show
-                                  setTouched({
-                                    ad_life: true,
-                                  });
-                                  setFieldValue("payment_method", "Paypal");
-                                  setFieldValue("amount", selectedAmount);
-                                  console.log(errors);
-                                  if (Object.keys(errors).length > 0) {
-                                    renderToastError(
-                                      "Please fill all required fields"
-                                    );
-                                    return;
-                                  }
+    setTouched({
+      ad_life: true,
+    });
 
-                                  if (!selectedAmount) {
-                                    renderToastError(
-                                      "Please select bundle first"
-                                    );
-                                    return;
-                                  }
+    if (Object.keys(errors).length > 0) {
+      console.log("Community validation:", errors);
 
-                                  setvisible(true)
-                                }}
-                              >
-                                <View style={styles.paypalContent}>
-                                  <Paypal />
+      renderToastError("Please fill all required fields");
+      return;
+    }
 
-                                  <Text style={styles.paypalText}>
-                                    Pay with PayPal or Debit/Credit Card
-                                  </Text>
-                                </View>
-                              </TouchableOpacity>
-                              <LargeButton
-                                handleSubmit={() => {
-                                  if (
-                                    !selectedAmount &&
-                                    selectedAmount === ""
-                                  ) {
-                                    renderToastError(
-                                      "Please select bundle first"
-                                    );
-                                    return;
-                                  }
-                                  if (amount.amount >= Number(selectedAmount)) {
-                                    setFieldValue("payment_method", "Wallet");
-                                    setFieldValue("amount", selectedAmount);
-                                    handleSubmit();
-                                  } else {
-                                    renderToastError(
-                                      "You dont have enought amount in wallet plz recharge"
-                                    );
-                                  }
-                                }}
-                                text="Pay with wallet"
-                              />
+    if (!selectedAmount) {
+      renderToastError("Please select bundle first");
+      return;
+    }
+
+    await setFieldValue(
+      "payment_method",
+      "Bank Alfalah",
+      false
+    );
+
+    await setFieldValue(
+      "amount",
+      selectedAmount,
+      false
+    );
+
+    await setFieldValue(
+      "order_id",
+      "",
+      false
+    );
+
+    setvisible(true);
+  }}
+>
+  <View style={styles.paypalContent}>
+    <View style={styles.alfalahHeader}>
+      <MaterialIcons
+        name="account-balance-wallet"
+        size={27}
+        color="#FFFFFF"
+      />
+
+      <View style={{ flex: 1 }}>
+        <Text style={styles.paypalText}>
+          Pay via Bank Alfalah
+        </Text>
+
+        <Text style={styles.alfalahSubtitle}>
+          Cards, Wallet & QR Payments
+        </Text>
+      </View>
+
+      <MaterialIcons
+        name="arrow-forward-ios"
+        size={17}
+        color="#FFFFFF"
+      />
+    </View>
+
+    <View style={styles.alfalahDivider} />
+
+    <View style={styles.alfalahMethods}>
+      <View style={styles.alfalahMethod}>
+        <MaterialIcons
+          name="credit-card"
+          size={22}
+          color="#FFFFFF"
+        />
+        <Text style={styles.alfalahMethodText}>
+          Debit / Credit Card
+        </Text>
+      </View>
+
+      <View style={styles.alfalahMethod}>
+        <MaterialIcons
+          name="account-balance-wallet"
+          size={22}
+          color="#FFFFFF"
+        />
+        <Text style={styles.alfalahMethodText}>
+          JazzCash Wallet
+        </Text>
+      </View>
+
+      <View style={styles.alfalahMethod}>
+        <MaterialIcons
+          name="qr-code-2"
+          size={22}
+          color="#FFFFFF"
+        />
+        <Text style={styles.alfalahMethodText}>
+          QR Code
+        </Text>
+      </View>
+    </View>
+  </View>
+</TouchableOpacity>
+                            <LargeButton
+  handleSubmit={async () => {
+    if (!selectedAmount) {
+      renderToastError(
+        "Please select bundle first"
+      );
+
+      return;
+    }
+
+    const walletAmount =
+      Number(
+        amount?.amount ?? 0
+      );
+
+    if (
+      walletAmount >=
+      Number(selectedAmount)
+    ) {
+      await setFieldValue(
+        "payment_method",
+        "Wallet",
+        false
+      );
+
+      await setFieldValue(
+        "amount",
+        selectedAmount,
+        false
+      );
+
+      await setFieldValue(
+        "order_id",
+        "",
+        false
+      );
+
+      handleSubmit();
+    } else {
+      renderToastError(
+        "You don't have enough amount in wallet. Please recharge."
+      );
+    }
+  }}
+  text="Pay with wallet"
+/>
                             </View>
                           </View>
                         </View>
@@ -1795,23 +1946,134 @@ const index = () => {
                       }
                     />
                   )}
-                  <PapPalPayment
-                    amount={selectedAmount}
-                    onPress={(order_id, setApproveUrl) => {
-                      try {
-                        setFieldValue("payment_method", "Paypal");
-                        setFieldValue("order_id", order_id);
-                        setvisible(false);
-                        handleSubmit();
-                        setApproveUrl(null);
-                              
-                      } catch {
-                        renderToastError("Some thing went rong");
-                      }
-                    }}
-                    setVisible={setvisible}
-                    visible={visible}
-                  />
+                 
+                <AlfalahPayment
+  visible={visible}
+  amount={selectedAmount}
+  setVisible={setvisible}
+
+  onPress={async (
+    orderId,
+    setApproveUrl
+  ) => {
+    try {
+      console.log(
+        "Community Alfalah payment success:",
+        orderId
+      );
+
+      /**
+       * ----------------------------------------
+       * STEP 1:
+       * Verify payment BEFORE community creation
+       * ----------------------------------------
+       */
+      const verification =
+        await verifyAlfalahPayment({
+          order_id:
+            String(orderId),
+        }).unwrap();
+
+      console.log(
+        "Community payment verification:",
+        verification
+      );
+
+      if (
+        !verification?.success
+      ) {
+        renderToastError(
+          verification?.message ||
+            "Unable to verify payment."
+        );
+
+        return;
+      }
+
+      if (
+        String(
+          verification?.status
+        ).toUpperCase() !==
+        "PAID"
+      ) {
+        renderToastError(
+          "Bank payment is not marked as paid."
+        );
+
+        return;
+      }
+
+      console.log(
+        "COMMUNITY PAYMENT VERIFIED"
+      );
+
+      /**
+       * ----------------------------------------
+       * STEP 2:
+       * Save payment info in Formik
+       * ----------------------------------------
+       */
+      await setFieldValue(
+        "order_id",
+        String(orderId),
+        false
+      );
+
+      await setFieldValue(
+        "payment_method",
+        "Bank Alfalah",
+        false
+      );
+
+      await setFieldValue(
+        "amount",
+        selectedAmount,
+        false
+      );
+
+      /**
+       * Close payment modal
+       */
+      setApproveUrl(null);
+      setvisible(false);
+
+      /**
+       * ----------------------------------------
+       * STEP 3:
+       * NOW community can be created
+       * ----------------------------------------
+       */
+      setTimeout(() => {
+        console.log(
+          "Submitting community after verified payment"
+        );
+
+        handleSubmit();
+      }, 200);
+
+    } catch (error: any) {
+      console.log(
+        "Community Alfalah verification error:",
+        error
+      );
+
+      console.log(
+        "Verification response:",
+        error?.data
+      );
+
+      renderToastError(
+        error?.data?.message ||
+          "Payment could not be verified. Community was not posted."
+      );
+
+      /**
+       * IMPORTANT:
+       * handleSubmit() yahan nahi karna.
+       */
+    }
+  }}
+/>
                 </>
               )}
             </Formik>
@@ -1841,6 +2103,69 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 5,
   },
+  paypalMainButton: {
+  backgroundColor: "#c21c1c",
+  borderRadius: 14,
+  paddingVertical: 16,
+  paddingHorizontal: 15,
+  elevation: 3,
+  shadowColor: "#000",
+  shadowOffset: {
+    width: 0,
+    height: 3,
+  },
+  shadowOpacity: 0.15,
+  shadowRadius: 5,
+},
+
+paypalContent: {
+  flexDirection: "column",
+},
+
+alfalahHeader: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 12,
+},
+
+paypalText: {
+  color: "#FFFFFF",
+  fontSize: 16,
+  fontWeight: "700",
+},
+
+alfalahSubtitle: {
+  color: "#D8EDE4",
+  fontSize: 12,
+  marginTop: 4,
+},
+
+alfalahDivider: {
+  height: 1,
+  backgroundColor: "rgba(255,255,255,0.25)",
+  marginVertical: 14,
+},
+
+alfalahMethods: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 8,
+},
+
+alfalahMethod: {
+  flex: 1,
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+},
+
+alfalahMethodText: {
+  color: "#FFFFFF",
+  fontSize: 10,
+  fontWeight: "600",
+  textAlign: "center",
+},
   title: {
     fontSize: ms(14),
     textAlign: "center",
@@ -1895,15 +2220,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  paypalMainButton: {
-    backgroundColor: Colors.light.Yellow,
-    borderRadius: ms(8),
-    height: vs(48),
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  paypalContent: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
+ 
+
 });

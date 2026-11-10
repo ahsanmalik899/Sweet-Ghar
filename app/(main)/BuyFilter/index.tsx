@@ -62,15 +62,24 @@ const index = () => {
         Picture: BuyAll,
       };
       break;
-    case "Farms/Lands":
-      dataBuy = {
-        mainHeading: "Explore the Latest UK ",
-        redText: "FARMS & \nLANDS ",
-        endText: "to buy",
-        subHeading: "Forms & Lands for sale",
-        Picture: BuyAll,
-      };
-      break;
+   case "Farms/Lands":
+  dataBuy = {
+    mainHeading: "Explore the Latest ",
+    redText: "FARMS & \nLANDS ",
+    endText: `for ${property_for}`,
+    subHeading: `Farms & Lands for ${property_for}`,
+    Picture: BuyAll,
+  };
+  break;
+   case "Holidays":
+  dataBuy = {
+    mainHeading: "Find your perfect ",
+    redText: "HOLIDAY",
+    endText: " home",
+    subHeading: `Holiday properties for ${property_for}`,
+    Picture: BuyAll,
+  };
+  break;
     case "Commercial":
       dataBuy = {
         mainHeading: "Explore new opportunities through\nour ",
@@ -91,26 +100,74 @@ const index = () => {
       break;
   }
   const propertyOptions = {
-    House: [
+  House: {
+    sale: [
       "All",
-      "Detached house",
-      "Semi-detached house",
-      "Town house Condo",
-      "Bungalow Co-op",
-      "Flats/ Apartments Condop",
+      "House",
+      "Flat / Apartment",
+      "Villa",
+      "Bungalow",
+      "Townhouse",
+      "Duplex",
       "Penthouse",
-      "Park homes",
-      "Others",
+      "Portion",
+      "Other",
     ],
-    Commercial: [
+
+    rent: [
       "All",
-      "Office",
-      "Office workspace",
-      "Retail properties",
-      "Leisure / Hospitality",
-      "Others",
+      "House",
+      "Flat / Apartment",
+      "Upper Portion",
+      "Lower Portion",
+      "Villa",
+      "Bungalow",
+      "Townhouse",
+      "Duplex",
+      "Penthouse",
+      "Room",
+      "Other",
     ],
-    "Farms/Lands": [
+  },
+
+  Commercial: {
+    sale: [
+      "All",
+      "Shop",
+      "Showroom",
+      "Office",
+      "Commercial Building",
+      "Plaza",
+      "Warehouse",
+      "Factory",
+      "Restaurant / Café",
+      "Hotel",
+      "Guest House",
+      "Commercial Plot",
+      "Mixed-Use Property",
+      "Other",
+    ],
+
+    rent: [
+      "All",
+      "Shop",
+      "Showroom",
+      "Office",
+      "Commercial Building",
+      "Plaza",
+      "Warehouse",
+      "Factory",
+      "Restaurant / Café",
+      "Hotel",
+      "Guest House",
+      "Commercial Plot",
+      "Mixed-Use Property",
+      "Other",
+    ],
+  },
+
+  "Farms/Lands": {
+    sale: [
       "All",
       "Land",
       "Commercial development",
@@ -118,7 +175,45 @@ const index = () => {
       "Farms",
       "Residential development",
     ],
-  };
+
+    rent: [
+      "All",
+      "Land",
+      "Commercial development",
+      "Industrial development",
+      "Farms",
+      "Residential development",
+    ],
+  },
+
+  Holidays: {
+    sale: [
+      "All",
+      "Holiday Home",
+      "Cottage",
+      "Chalet",
+      "Farmhouse",
+      "Vacation Villa",
+      "Resort",
+      "Guest House",
+      "Hotel",
+      "Other",
+    ],
+
+    rent: [
+      "All",
+      "Holiday Home",
+      "Cottage",
+      "Chalet",
+      "Farmhouse",
+      "Vacation Villa",
+      "Resort",
+      "Guest House",
+      "Hotel",
+      "Other",
+    ],
+  },
+};
   const quickSearchSaleData = [
     {
       id: "1",
@@ -160,10 +255,14 @@ const index = () => {
     },
   ];
 
-  const options =
-    type && propertyOptions[type as keyof typeof propertyOptions]
-      ? propertyOptions[type as keyof typeof propertyOptions]
-      : [];
+ const options =
+  type &&
+  property_for &&
+  propertyOptions[type as keyof typeof propertyOptions]
+    ? propertyOptions[type as keyof typeof propertyOptions][
+        property_for as "sale" | "rent"
+      ] || []
+    : [];
   const [propertysubType, setPropertysubType] = useState<string[]>([]);
   const [propertyType, setPropertyType] = useState(type.toString());
   const [address, setaddress] = useState("");

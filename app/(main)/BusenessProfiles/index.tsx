@@ -4,6 +4,7 @@ import {
   useSendBlockedProfileMessageMutation,
 } from "@/store/api/user/MainApi";
 import { userdata } from "@/store/slices/selector/user";
+import MaterialSupply from "@assets/CreateProfile/material-supply.svg";
 import Agent from "@assets/SideBar/agent.svg";
 import Builder from "@assets/SideBar/builder.svg";
 import Decore from "@assets/SideBar/decore.svg";
@@ -201,6 +202,22 @@ const index = () => {
             }
           />
         </View>
+          <SideBarCard
+            text="Material Supplier Profile"
+            Svg={MaterialSupply}
+            type={
+              data?.profiles_exist?.material_supplier?.status === "Block"
+                ? "Block"
+                : "busenessProfile"
+            }
+            ProfileExist={data?.profiles_exist?.material_supplier?.exists}
+            id={data?.profiles_exist?.material_supplier?.profile_id}
+            profileType="material_supplier"
+            isBlocked={data?.profiles_exist?.material_supplier?.status}
+            onPress={() =>
+              handleBlockedProfile("material_supplier", data?.profiles_exist?.agent)
+            }
+          />
       </ScrollView>
       <Loading isLoading={isLoading} text="Loading..." />
       <BlockedProfileModal

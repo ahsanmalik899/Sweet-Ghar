@@ -283,6 +283,103 @@ const Index = () => {
           </ScrollView>
    
       );
+
+      break;
+      case "builder":
+      return (
+         <ScrollView className="bg-white">
+        <View className="bg-white flex-1">
+          <HeaderWithBack />
+          <View style={{ marginHorizontal: hs(20) }}>
+            <Text style={styles.mainHeading}>
+              <Text style={{ color: Colors.light.red ,fontFamily: "PopinRegula",}}>BUILD</Text>or
+              <Text style={{ color: Colors.light.red,fontFamily: "PopinRegula", }}> RE-BUILD </Text>
+              your home
+            </Text>
+            <Text style={{fontFamily: "PopinRegula",}}>
+              Give structural change or build your home with our leading expert
+              builders. Simply search local home builders around you.
+            </Text>
+            <Text style={styles.subHeading}>
+              Search experienced{" "}
+              <Text style={{ color: Colors.light.red ,fontFamily: "PopinRegula",}}>Home Builders</Text>
+            </Text>
+           
+             <SerchBar
+            setAddress={setaddress}
+            setCity={setCity}
+            setLat={setLat}
+            setLng={setLng}
+            setState={setState}
+            setZip={setZip}
+            onpress={() => {
+              router.navigate({
+                pathname: "/ProfileListings",
+                params: {
+                  address: address,
+                  city: city,
+                  zip: zip || "",
+                  lat: lat?.toString(),
+                  lng: lng?.toString(),
+                  stateCode: state,
+                  radius: radius,
+                  name:name,
+                  type:"builder"
+                },
+              });
+            }}
+            value={address}
+            latValue={lat}
+            longValue={lng}
+          />
+          <FormikDropdownwithjson
+                        title={""}
+                        placeholder={"Radius (miles)"}
+                        value={radius}
+                        options={[
+                          { label: "Radius (miles)", value: "0" },
+                          { label: "1 mile", value: "1" },
+                          { label: "5 miles", value: "5" },
+                          { label: "10 miles", value: "10" },
+                          { label: "20 miles", value: "20" },
+                          { label: "30 miles", value: "30" },
+                          { label: "40 miles", value: "40" },
+                          { label: "50 miles", value: "50" },
+                        ]}
+                        name="radius"
+                        touched={false}
+                        errors={false}
+                        errorText={""}
+                        onSelect={(val) => {
+                          setRadius(val);
+                        }}
+                        setValue={setRadius}
+                      />
+                      <View className="flex-row justify-between items-center mt-3">
+                        <View style={styles.line} />
+                        <Text style={{fontFamily: "PopinRegula",}}>OR</Text>
+                        <View style={styles.line} />
+                      </View>
+                      <SearchProfile
+                        type="builder"
+                        onSelect={(val) => {
+                          setname(val.business_name);
+                          setCity("");
+                          setLat(0);
+                          setLng(0);
+                          setRadius(""), setState(""), setZip(""), setaddress("");
+                        }}
+                        value={name}
+                      />
+                         <Text style={styles.mainHeading}>
+              Leading 
+              <Text style={{ color: Colors.light.red,fontFamily: "PopinRegula", }}> BUILDERS</Text>
+            </Text>
+               <LeadingList data={profileList?.data} isFetching={isFetching} />
+          </View>
+        </View>
+        </ScrollView>
+      );
       break;
   }
 };

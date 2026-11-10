@@ -1,7 +1,5 @@
-import { useGetUserWalletQuery } from "@/store/api/user/MainApi";
+import { useGetBundlesPriceQuery, useGetUserWalletQuery } from "@/store/api/user/MainApi";
 import { userdata } from "@/store/slices/selector/user";
-import Paypal from "@assets/SideBar/paypal-icon.svg";
-import PowerdByPayPal from "@assets/SideBar/Powered by PayPal.svg";
 import { MaterialIcons } from "@expo/vector-icons";
 import { FlashList } from "@shopify/flash-list";
 import HeaderWithBack from "@src/components/globals/HeaderWithBack";
@@ -23,12 +21,14 @@ import {
 
 const index = () => {
   const user = useAppSelector(userdata);
-  const bundlesData = [
-    { id: "1", type: "Basic", price: "200", amount: "650" },
-    { id: "2", type: "Medium", price: "400", amount: "1300" },
-    { id: "3", type: "Bulk", price: "700", amount: "2200" },
-    { id: "4", type: "High Volume", price: "700", amount: "2200" },
-  ];
+const {
+  data: bundlesResponse,
+  isLoading: bundlesLoading,
+  isFetching: bundlesFetching,
+  refetch: refetchBundles,
+} = useGetBundlesPriceQuery(undefined);
+
+const bundlesData = bundlesResponse?.data ?? [];
   const [adType, setAdtype] = useState("");
   const [selectedAmount, setSelectedAmount] = useState("");
   const [upgradeAmount, setUpgradeAmout] = useState("");
@@ -96,9 +96,9 @@ const index = () => {
                 flex:1,
               }}
             >
-             <FlashList
+<FlashList
   data={bundlesData}
-  keyExtractor={(item) => item.id}
+  keyExtractor={(item) => item.bundles_price_id.toString()}
   ListHeaderComponent={
     <View
       className="flex-row justify-between items-center"
@@ -111,61 +111,164 @@ const index = () => {
         paddingVertical: vs(10),
       }}
     >
-      <Text style={{ fontFamily: "PopinRegula" }}>Bundles</Text>
+      <Text
+        style={{
+          fontFamily: "PopinRegula",
+          flex: 1.2,
+        }}
+      >
+        Bundles
+      </Text>
 
-      <Text style={{ fontFamily: "PopinRegula" }}>
+      <Text
+        style={{
+          fontFamily: "PopinRegula",
+          flex: 1,
+          textAlign: "center",
+        }}
+      >
         Bundle price
       </Text>
 
-      <Text style={{ fontFamily: "PopinRegula" }}>
+      <Text
+        style={{
+          fontFamily: "PopinRegula",
+          flex: 1,
+          textAlign: "right",
+        }}
+      >
         Amount you get
       </Text>
     </View>
+  }
+  ListEmptyComponent={
+    bundlesLoading || bundlesFetching ? (
+      <View
+        style={{
+          paddingVertical: vs(30),
+          alignItems: "center",
+        }}
+      >
+        <ActivityIndicator
+          size="small"
+          color={Colors.light.DarkGreen}
+        />
+
+        <Text
+          style={{
+            marginTop: vs(8),
+            fontFamily: "PopinRegula",
+          }}
+        >
+          Loading bundles...
+        </Text>
+      </View>
+    ) : (
+      <View
+        style={{
+          paddingVertical: vs(30),
+          alignItems: "center",
+        }}
+      >
+        <Text style={{ fontFamily: "PopinRegula" }}>
+          No bundles available
+        </Text>
+      </View>
+    )
   }
   renderItem={({ item }) => (
     <View
       className="flex-row justify-between items-center"
       style={{
         paddingHorizontal: hs(10),
-        paddingVertical: vs(10),
+        paddingVertical: vs(12),
       }}
     >
-      <View className="flex-row items-center">
+      {/* Bundle type */}
+      <View
+        className="flex-row items-center"
+        style={{ flex: 1.2 }}
+      >
         <TouchableOpacity
-         activeOpacity={1}
+          activeOpacity={1}
           onPress={() => {
-            setAdtype(adType === item.type ? "" : item.type);
-            setSelectedAmount(item.price);
-            setUpgradeAmout(item.amount);
+            if (adType === item.bundle_type) {
+              setAdtype("");
+              setSelectedAmount("");
+              setUpgradeAmout("");
+            } else {
+              setAdtype(item.bundle_type);
+
+              // Actual payment amount
+              setSelectedAmount(
+                item.bundle_price.toString()
+              );
+
+              // Credits user will receive
+              setUpgradeAmout(
+                item.amount_credit.toString()
+              );
+            }
           }}
         >
           <MaterialIcons
             size={18}
             color={Colors.light.DarkGreen}
             name={
-              adType === item.type
+              adType === item.bundle_type
                 ? "check-box"
                 : "check-box-outline-blank"
             }
           />
         </TouchableOpacity>
 
-        <Text
+        <View
           style={{
             marginLeft: hs(10),
-            fontFamily: "PopinRegula",
           }}
         >
-          {item.type}
-        </Text>
+          <Text
+            style={{
+              fontFamily: "PopinRegula",
+            }}
+          >
+            {item.bundle_type}
+          </Text>
+
+          {item.saving_percentage > 0 && (
+            <Text
+              style={{
+                fontFamily: "PopinRegula",
+                fontSize: ms(10),
+                color: Colors.light.DarkGreen,
+              }}
+            >
+              Save {item.saving_percentage}%
+            </Text>
+          )}
+        </View>
       </View>
 
-      <Text style={{ fontFamily: "PopinRegula" }}>
-        {formatPrice(item.price)}
+      {/* Bundle price */}
+      <Text
+        style={{
+          fontFamily: "PopinRegula",
+          flex: 1,
+          textAlign: "center",
+        }}
+      >
+        {formatPrice(item.bundle_price)}
       </Text>
 
-      <Text style={{ fontFamily: "PopinRegula" }}>
-        {item.amount}
+      {/* Credits */}
+      <Text
+        style={{
+          fontFamily: "PopinRegula",
+          flex: 1,
+          textAlign: "right",
+        }}
+      >
+        {item.amount_credit}
       </Text>
     </View>
   )}
@@ -191,44 +294,137 @@ const index = () => {
                     fontSize:ms(15),
                   }}
                 >
-                  £{data?.amount ?? 0}
+                  PKR{data?.amount ?? 0}
                 </Text>
               )}
             </View>
 
-            <View style={styles.paymentOptions}>
-              <TouchableOpacity
-               activeOpacity={1}
-                style={styles.paypalMainButton}
-                onPress={() => {
-                  if (adType === "") {
-                    renderToastError("Please select bundle first");
-                    return;
-                  }
+          <View style={styles.paymentOptions}>
+  {/* =========================
+      BANK ALFALAH
+  ========================== */}
+  <TouchableOpacity
+  activeOpacity={0.85}
+  style={styles.alfalahButton}
+  onPress={() => {
+    if (adType === "") {
+      renderToastError("Please select bundle first");
+      return;
+    }
 
-                  router.navigate({
-                    pathname: "/PaymentScreen",
-                    params: {
-                      amount: selectedAmount,
-                      type:"Bundle",
-                      upgrade_amount:upgradeAmount,
-                    },
-                  });
-                }}
-              >
-                <View style={styles.paypalContent}>
-                  <Paypal />
+    router.navigate({
+      pathname: "/PaymentScreen",
+      params: {
+        amount: selectedAmount,
+        type: "Bundle",
+        upgrade_amount: upgradeAmount,
+        provider: "alfalah",
+      },
+    });
+  }}
+>
+  <View style={styles.paymentHeader}>
+    <MaterialIcons
+      name="account-balance-wallet"
+      size={25}
+      color="#FFFFFF"
+    />
 
-                  <Text style={styles.paypalText}>
-                    Pay with PayPal or Debit/Credit Card
-                  </Text>
-                </View>
-              </TouchableOpacity>
+    <View style={{ flex: 1 }}>
+      <Text style={styles.paymentButtonText}>
+        Pay via Bank Alfalah
+      </Text>
 
-              <View className="self-center mt-3">
-                <PowerdByPayPal />
-              </View>
-            </View>
+      <Text style={styles.paymentSubtitle}>
+        Cards, Wallet & QR Payments
+      </Text>
+    </View>
+
+    <MaterialIcons
+      name="arrow-forward-ios"
+      size={17}
+      color="#FFFFFF"
+    />
+  </View>
+
+  <View style={styles.paymentDivider} />
+
+  <View style={styles.paymentMethods}>
+    <View style={styles.paymentMethodItem}>
+      <MaterialIcons
+        name="credit-card"
+        size={22}
+        color="#FFFFFF"
+      />
+      <Text style={styles.paymentMethodText}>
+        Debit / Credit Card
+      </Text>
+    </View>
+
+    <View style={styles.paymentMethodItem}>
+      <MaterialIcons
+        name="account-balance-wallet"
+        size={22}
+        color="#FFFFFF"
+      />
+      <Text style={styles.paymentMethodText}>
+        JazzCash Wallet
+      </Text>
+    </View>
+
+    <View style={styles.paymentMethodItem}>
+      <MaterialIcons
+        name="qr-code-2"
+        size={22}
+        color="#FFFFFF"
+      />
+      <Text style={styles.paymentMethodText}>
+        QR Code
+      </Text>
+    </View>
+  </View>
+</TouchableOpacity>
+
+  {/* =========================
+      EASYPAISA
+  ========================== */}
+  {/* <TouchableOpacity
+    activeOpacity={0.8}
+    style={styles.easypaisaButton}
+    onPress={() => {
+      if (adType === "") {
+        renderToastError(
+          "Please select bundle first"
+        );
+        return;
+      }
+
+      router.navigate({
+        pathname: "/PaymentScreen",
+        params: {
+          amount: selectedAmount,
+          type: "Bundle",
+          upgrade_amount: upgradeAmount,
+          provider: "easypaisa",
+        },
+      });
+    }}
+  >
+    <MaterialIcons
+      name="account-balance-wallet"
+      size={22}
+      color="white"
+    />
+
+    <Text style={styles.paymentButtonText}>
+      Pay with Easypaisa
+    </Text>
+  </TouchableOpacity> */}
+
+  <Text style={styles.secureText}>
+    Secure online payment
+  </Text>
+</View>
           </View>
         </View>
       </ScrollView>
@@ -243,6 +439,66 @@ const styles = StyleSheet.create({
     marginTop: vs(20),
     fontFamily: "PopinRegula",
   },
+  alfalahButton: {
+  backgroundColor: "#c21c1c",
+  borderRadius: 14,
+  paddingVertical: 16,
+  paddingHorizontal: 16,
+  marginTop: 12,
+  elevation: 3,
+  shadowColor: "#000",
+  shadowOffset: {
+    width: 0,
+    height: 3,
+  },
+  shadowOpacity: 0.15,
+  shadowRadius: 5,
+},
+
+paymentHeader: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 12,
+},
+
+paymentButtonText: {
+  color: "#FFFFFF",
+  fontSize: 16,
+  fontWeight: "700",
+},
+
+paymentSubtitle: {
+  color: "#D8EDE4",
+  fontSize: 12,
+  marginTop: 4,
+},
+
+paymentDivider: {
+  height: 1,
+  backgroundColor: "rgba(255,255,255,0.25)",
+  marginVertical: 14,
+},
+
+paymentMethods: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 8,
+},
+
+paymentMethodItem: {
+  flex: 1,
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+},
+
+paymentMethodText: {
+  color: "#FFFFFF",
+  fontSize: 10,
+  fontWeight: "600",
+  textAlign: "center",
+},
   card: {
     marginVertical: vs(20),
     marginHorizontal: hs(15),
@@ -321,4 +577,25 @@ const styles = StyleSheet.create({
     color: "#003087",
     fontFamily: "PopinRegula",
   },
+
+
+easypaisaButton: {
+  backgroundColor: "#6DBE45",
+  borderRadius: ms(8),
+  height: vs(48),
+  justifyContent: "center",
+  alignItems: "center",
+  flexDirection: "row",
+  marginTop: vs(12),
+},
+
+
+
+secureText: {
+  textAlign: "center",
+  marginTop: vs(12),
+  color: Colors.light.textGray,
+  fontSize: ms(12),
+  fontFamily: "PopinRegula",
+},
 });

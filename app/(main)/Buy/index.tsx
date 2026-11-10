@@ -1,6 +1,7 @@
 import FormandLand from "@assets/Buy/formLandForSale.svg";
 import PropertyForSale from "@assets/Buy/propertyforSale.svg";
 import Rebuilt from "@assets/Buy/reBuiltForsale.svg";
+import Holydays from '@assets/icons/PostProperty/holydays.svg';
 import HeaderWithBack from "@src/components/globals/HeaderWithBack";
 import LargeButton from "@src/components/globals/LaregeButton";
 import SideBarCard from "@src/components/globals/SideBarCard";
@@ -48,6 +49,20 @@ const index = () => {
             }}
             type={"Buy"}
           />
+          <SideBarCard
+  Svg={Holydays}
+  text="Holidays"
+  onPress={() => {
+    router.navigate({
+      pathname: "/(main)/BuyFilter",
+      params: {
+        type: "Holidays",
+        property_for: "sale",
+      },
+    });
+  }}
+  type={"Buy"}
+/>
         </View>
       </View>
       <View style={{justifyContent: 'flex-end',marginTop:'auto',marginHorizontal:hs(20),marginBottom:hs(20)}}>

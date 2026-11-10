@@ -9,7 +9,7 @@ import {
 
 export const Authapi = createApi({
   reducerPath: 'Authapi',
-  baseQuery: fetchBaseQuery({ baseUrl: 'https://sweetghar.com/api/' }),
+  baseQuery: fetchBaseQuery({ baseUrl: 'https://www.sweetghar.com/api/' }),
   endpoints: builder => ({
     Signup: builder.mutation<unknown, FormData>({
       query: formData => ({

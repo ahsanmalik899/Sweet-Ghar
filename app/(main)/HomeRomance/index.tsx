@@ -1,5 +1,6 @@
 import Decore from "@assets/HomeRomance/Interior.svg";
-import Builder from "@assets/HomeRomance/builderh.svg";
+
+import MaterialSupply from "@assets/CreateProfile/material-supply.svg";
 import Electrician from "@assets/HomeRomance/electrician.svg";
 import Painter from "@assets/HomeRomance/painterh.svg";
 import Plumber from "@assets/HomeRomance/plumberh.svg";
@@ -66,15 +67,15 @@ const index = () => {
           />
         </View>
 
-        <View className="flex-row justify-between">
+          <View className="flex-row justify-between">
           <SideBarCard
-            text="Home Builders"
-            Svg={Builder}
+            text="Material supplier"
+            Svg={MaterialSupply}
             type="Buy"
             onPress={() => {
               router.navigate({
                 pathname: "/(main)/HomeRomanceListing",
-                params: { type: "builder" },
+                params: { type: "material_supplier" },
               });
             }}
           />

@@ -20,9 +20,8 @@ import Connection from "@assets/SideBar/connection.svg";
 import HomeFeed from "@assets/SideBar/homeFeed.svg";
 import Listipage1 from "@assets/SideBar/listingPage1.svg";
 import Listipage2 from "@assets/SideBar/listinpage2.svg";
-import Paypal from "@assets/SideBar/paypal-icon.svg";
 import TimeLine from "@assets/SideBar/timeline.svg";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { FlashList } from "@shopify/flash-list";
 
 import { AdCardWithoutAnimation } from "@src/AdCardWithoutAnimation";
@@ -166,7 +165,7 @@ const index = () => {
           fontFamily: "PopinRegula",
         }}
       >
-        £ 15 / Day
+        PKR 15 / Day
       </Text>
       <View className="justify-between " style={{ marginTop: vs(10) }}>
         <Text style={{ fontFamily: "PopinRegula" }}>
@@ -204,7 +203,7 @@ const index = () => {
           fontFamily: "PopinRegula",
         }}
       >
-        £ 10 / Day
+        PKR 10 / Day
       </Text>
       <View className="justify-between " style={{ marginTop: vs(10) }}>
         <Text style={{ fontFamily: "PopinRegula" }}>
@@ -242,7 +241,7 @@ const index = () => {
           fontFamily: "PopinRegula",
         }}
       >
-        £ 5/ Day
+        PKR 5/ Day
       </Text>
       <View className="justify-between " style={{ marginTop: vs(10) }}>
         <Text style={{ fontFamily: "PopinRegula" }}>
@@ -279,7 +278,7 @@ const index = () => {
           fontFamily: "PopinRegula",
         }}
       >
-        £ 25 / Day
+        PKR 25 / Day
       </Text>
       <View className="justify-between " style={{ marginTop: vs(10) }}>
         <Text style={{ fontFamily: "PopinRegula" }}>
@@ -315,7 +314,7 @@ const index = () => {
           fontFamily: "PopinRegula",
         }}
       >
-        £ 20 / Day
+        PKR 20 / Day
       </Text>
       <View className="justify-between " style={{ marginTop: vs(10) }}>
         <Text style={{ fontFamily: "PopinRegula" }}>
@@ -1170,7 +1169,40 @@ const index = () => {
                               Painters
                             </Text>
                           </TouchableOpacity>
+             
                         </View>
+                                     <TouchableOpacity
+                                     className="mt-3"
+  activeOpacity={1}
+  style={[
+    styles.btn,
+    (values.on_page === "material_supplier" ||
+      values.on_page === "material_supplier_single") &&
+      styles.btnselected,
+    { flex: 1 },
+  ]}
+  onPress={() => {
+    page === "listing"
+      ? setFieldValue("on_page", "material_supplier")
+      : setFieldValue("on_page", "material_supplier_single");
+
+    getprice({ type: pageTypeMap[page] });
+  }}
+>
+  <Text
+    style={{
+      color:
+        values.on_page === "material_supplier" ||
+        values.on_page === "material_supplier_single"
+          ? "white"
+          : "black",
+      fontWeight: 600,
+      fontFamily: "PopinRegula",
+    }}
+  >
+    Material Supplier
+  </Text>
+</TouchableOpacity>
                       </View>
                     )}
                     {touched && errors && (
@@ -1489,30 +1521,86 @@ const index = () => {
                           </Text>
 
                           <TouchableOpacity
-                           activeOpacity={1}
-                            className="mb-4"
-                            style={styles.paypalMainButton}
-                            onPress={async () => {
-                              if (!SelectedAmount) {
-                                renderToastError("Please select bundle first");
-                                return;
-                              }
+  activeOpacity={0.85}
+  className="mb-4"
+  style={styles.paypalMainButton}
+  onPress={async () => {
+    if (!SelectedAmount) {
+      renderToastError("Please select bundle first");
+      return;
+    }
 
-                              if (Object.keys(errors).length > 0) {
-                                renderToastError("Please fill all the fields");
-                                return;
-                              }
+    if (Object.keys(errors).length > 0) {
+      renderToastError("Please fill all the fields");
+      return;
+    }
 
-                              setvisible(true);
-                            }}
-                          >
-                            <View style={styles.paypalContent}>
-                              <Paypal />
-                              <Text style={styles.paypalText}>
-                                Pay with PayPal or Debit/Credit Card
-                              </Text>
-                            </View>
-                          </TouchableOpacity>
+    setvisible(true);
+  }}
+>
+  <View style={styles.paypalContent}>
+    <View style={styles.alfalahHeader}>
+      <MaterialIcons
+        name="account-balance-wallet"
+        size={27}
+        color="#FFFFFF"
+      />
+
+      <View style={{ flex: 1 }}>
+        <Text style={styles.paypalText}>
+          Pay via Bank Alfalah
+        </Text>
+
+        <Text style={styles.alfalahSubtitle}>
+          Cards, Wallet & QR Payments
+        </Text>
+      </View>
+
+      <MaterialIcons
+        name="arrow-forward-ios"
+        size={17}
+        color="#FFFFFF"
+      />
+    </View>
+
+    <View style={styles.alfalahDivider} />
+
+    <View style={styles.alfalahMethods}>
+      <View style={styles.alfalahMethod}>
+        <MaterialIcons
+          name="credit-card"
+          size={22}
+          color="#FFFFFF"
+        />
+        <Text style={styles.alfalahMethodText}>
+          Debit / Credit Card
+        </Text>
+      </View>
+
+      <View style={styles.alfalahMethod}>
+        <MaterialIcons
+          name="account-balance-wallet"
+          size={22}
+          color="#FFFFFF"
+        />
+        <Text style={styles.alfalahMethodText}>
+          JazzCash Wallet
+        </Text>
+      </View>
+
+      <View style={styles.alfalahMethod}>
+        <MaterialIcons
+          name="qr-code-2"
+          size={22}
+          color="#FFFFFF"
+        />
+        <Text style={styles.alfalahMethodText}>
+          QR Code
+        </Text>
+      </View>
+    </View>
+  </View>
+</TouchableOpacity>
 
                           <LargeButton
                             handleSubmit={() => {
@@ -1722,7 +1810,7 @@ const index = () => {
           {[
             {
               label: "Amount",
-              value: `£ ${item.amount_received}`,
+              value: `PKR ${item.amount_received}`,
             },
             {
               label: "Payment",
@@ -2056,6 +2144,66 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
   },
+  paypalMainButton: {
+  backgroundColor: "#c21c1c",
+  borderRadius: 14,
+  paddingVertical: 16,
+  paddingHorizontal: 15,
+  elevation: 3,
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 3 },
+  shadowOpacity: 0.15,
+  shadowRadius: 5,
+},
+
+paypalContent: {
+  flexDirection: "column",
+},
+
+alfalahHeader: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 12,
+},
+
+paypalText: {
+  color: "#FFFFFF",
+  fontSize: 16,
+  fontWeight: "700",
+},
+
+alfalahSubtitle: {
+  color: "#D8EDE4",
+  fontSize: 12,
+  marginTop: 4,
+},
+
+alfalahDivider: {
+  height: 1,
+  backgroundColor: "rgba(255,255,255,0.25)",
+  marginVertical: 14,
+},
+
+alfalahMethods: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 8,
+},
+
+alfalahMethod: {
+  flex: 1,
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+},
+
+alfalahMethodText: {
+  color: "#FFFFFF",
+  fontSize: 10,
+  fontWeight: "600",
+  textAlign: "center",
+},
   stickyButton: {
     backgroundColor: "#fff",
     padding: 10,
@@ -2073,10 +2221,7 @@ const styles = StyleSheet.create({
   btnselected: {
     backgroundColor: Colors.light.DarkGreen,
   },
-  paypalContent: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
+ 
   adContainer: {
     width: "100%",
     height: "100%",
@@ -2094,13 +2239,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontFamily: "PopinRegula",
   },
-  paypalMainButton: {
-    backgroundColor: Colors.light.Yellow,
-    borderRadius: ms(8),
-    height: vs(48),
-    justifyContent: "center",
-    alignItems: "center",
-  },
+ 
   adCard: {
     width: "100%",
     height: vs(100),
@@ -2111,13 +2250,7 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
 
-  paypalText: {
-    marginLeft: hs(10),
-    fontSize: ms(14),
-    fontWeight: "600",
-    color: "#003087",
-    fontFamily: "PopinRegula",
-  },
+ 
   card2: {
     marginVertical: vs(20),
     backgroundColor: "white",

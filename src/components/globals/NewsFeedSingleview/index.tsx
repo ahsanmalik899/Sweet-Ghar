@@ -7,12 +7,12 @@ import Like from "@assets/icons/Like.svg";
 import Area from "@assets/icons/MypostListing/area.svg";
 import Bed from "@assets/icons/MypostListing/bed.svg";
 import Shower from "@assets/icons/MypostListing/shower.svg";
-import Share from "@assets/icons/share.svg";
+import ShareIcon from "@assets/icons/share.svg";
 import Liked from "@assets/icons/ThumbUpRed.svg";
 import CommunityType from "@assets/SideBar/commercialGreen.svg";
 import Delete from "@assets/SideBar/deletbaskit.svg";
 import NoImage from "@assets/SideBar/no_images.png";
-import { MaterialIcons } from '@expo/vector-icons';
+import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import { FlashList } from '@shopify/flash-list';
 import Colors from '@src/constants/Colors';
 import { renderToastError, renderToastSuccess } from '@src/hooks/useToasty';
@@ -23,10 +23,12 @@ import { timeAgo } from '@utils/Timeago';
 import { ViedioUrlFormat } from '@utils/ViedioUrlFormater';
 import { Video } from 'expo-av';
 import * as Clipboard from 'expo-clipboard';
+import { File, Paths } from "expo-file-system";
 import { Formik } from 'formik';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Keyboard, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Keyboard, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import RNShare from "react-native-share";
 import { useSelector } from 'react-redux';
 import * as yup from "yup";
 import AddSingleView from '../AddSingleView';
@@ -92,6 +94,7 @@ const handleDelete = (
     ]
   );
 };
+
 const [editComment, { isLoading: editing }] =
   useEditCommentApiMutation();
       const handleEditComment = async () => {
@@ -423,7 +426,231 @@ useEffect(() => {
       const [likePost, { isLoading: liking }] = useLikePostMutation();
       const [unlikePost, { isLoading: unliking }] = useUnlikePostMutation();
    const [share_postApi, { isLoading: sharing }] = useShare_postApiMutation();
-       
+   const downloadShareImage = async (
+  imageUrl: string,
+  postId: string | number
+) => {
+  try {
+    if (!imageUrl) {
+      return null;
+    }
+
+    console.log("Remote image URL:", imageUrl);
+
+    const lowerUrl = imageUrl.toLowerCase();
+
+    let extension = "jpg";
+
+    if (lowerUrl.includes(".png")) {
+      extension = "png";
+    } else if (lowerUrl.includes(".webp")) {
+      extension = "webp";
+    } else if (lowerUrl.includes(".jpeg")) {
+      extension = "jpeg";
+    }
+
+    const destination = new File(
+      Paths.cache,
+      `sweetghar-share-${postId}-${Date.now()}.${extension}`
+    );
+
+    const downloadedFile = await File.downloadFileAsync(
+      imageUrl,
+      destination
+    );
+
+    console.log("Downloaded image:", downloadedFile.uri);
+
+    return downloadedFile.uri;
+
+  } catch (error) {
+    console.log("Image download error:", error);
+    return null;
+  }
+};
+const shareOnSocial = async (
+  platform: "whatsapp" | "facebook" | "twitter" | "linkedin"| "more"
+) => {
+  try {
+    if (!post_id) {
+      renderToastError("Post not found");
+      return;
+    }
+
+    // General feed post link
+    const postUrl =
+      `https://www.sweetghar.com/postRedirect?post_id=${post_id}&&type=post`;
+
+  let shareText = "";
+
+if (data?.type === "community") {
+  const communityTitle =
+    data?.post?.community_title || "Community";
+
+  const city =
+    data?.post?.city ||
+    data?.posted_by?.city ||
+    "";
+
+  const startingPrice =
+    data?.post?.community_price?.length > 0
+      ? data.post.community_price[0]
+      : null;
+
+  shareText = `${communityTitle}${
+    city ? ` in ${city}` : ""
+  }${
+    startingPrice
+      ? ` - From PKR ${formatPrice(startingPrice)}`
+      : ""
+  }`;
+
+} else if (data?.type === "general") {
+  const description =
+    data?.post?.description || "";
+
+  shareText =
+    description.length > 150
+      ? `${description.slice(0, 150)}...`
+      : description || "Check out this post on SweetGhar";
+
+} else {
+  const bedrooms =
+    data?.post?.bedrooms ?? "";
+
+  const propertyType =
+    data?.post?.property_sub_type || "Property";
+
+  const propertyFor =
+    data?.post?.property_for?.toLowerCase() === "rent"
+      ? "Rent"
+      : "Sale";
+
+  const city =
+    data?.post?.city ||
+    data?.posted_by?.city ||
+    "";
+
+  const price =
+    data?.post?.asking_price;
+
+  const rentType =
+    propertyFor === "Rent" && data?.post?.rent_type
+      ? `/${data.post.rent_type}`
+      : "";
+
+  shareText = `${
+    bedrooms ? `${bedrooms} Bedroom ` : ""
+  }${propertyType} for ${propertyFor}${
+    city ? ` in ${city}` : ""
+  }${
+    price
+      ? ` - PKR ${formatPrice(price)}${rentType}`
+      : ""
+  }`;
+}
+
+const message = `${shareText}\n${postUrl}`;
+
+    // NewsFeedSingleview mein image yahan hai
+    const remoteImage =
+      data?.post_images?.length > 0
+        ? ImageFormater(data.post_images[0])
+        : null;
+
+    console.log("POST ID:", post_id);
+    console.log("POST URL:", postUrl);
+    console.log("REMOTE IMAGE:", remoteImage);
+
+    let localImage: string | null = null;
+
+    if (remoteImage) {
+      localImage = await downloadShareImage(
+        remoteImage,
+        post_id
+      );
+    }
+
+    console.log("LOCAL IMAGE:", localImage);
+
+    const shareOptions: any = {
+      title: "Share SweetGhar Post",
+      message,
+      failOnCancel: false,
+
+      ...(Platform.OS === "android" && {
+        useInternalStorage: true,
+      }),
+
+      ...(localImage && {
+        url: localImage,
+        type: "image/*",
+      }),
+    };
+
+    // WhatsApp
+    if (platform === "whatsapp") {
+      await RNShare.shareSingle({
+        ...shareOptions,
+        social: RNShare.Social.WHATSAPP,
+      });
+
+      return;
+    }
+
+    // Facebook
+    if (platform === "facebook") {
+      await RNShare.shareSingle({
+        ...shareOptions,
+        social: RNShare.Social.FACEBOOK,
+      });
+
+      return;
+    }
+
+    // LinkedIn
+    if (platform === "linkedin") {
+      if (Platform.OS === "android") {
+        await RNShare.shareSingle({
+          ...shareOptions,
+          social: RNShare.Social.LINKEDIN,
+        });
+      } else {
+        await RNShare.open(shareOptions);
+      }
+
+      return;
+    }
+
+    // Twitter / X
+    if (platform === "twitter") {
+      if (Platform.OS === "ios") {
+        await RNShare.shareSingle({
+          ...shareOptions,
+          social: RNShare.Social.TWITTER,
+        });
+      } else {
+        await RNShare.open(shareOptions);
+      }
+
+      return;
+    }
+if (platform === "more") {
+  await RNShare.open({
+    ...shareOptions,
+    failOnCancel: false,
+  });
+
+  return;
+}
+  } catch (error: any) {
+    console.log("Social share error:", error);
+
+    renderToastError(
+      error?.message || "Unable to share post"
+    );
+  }
+};
   const [loading,setLoading]=useState(false);
   const [singleView, setSingleView] = useState(false);
      const [singlePost, setSinglePost] = useState<any>(null);
@@ -559,7 +786,7 @@ setData((prevData) =>
  
                {data?.post?.community_price?.length > 0 && (
                  <Text style={{ color: Colors.light.red, fontWeight: "600" }}>
-                   From £ {formatPrice(data?.post?.community_price[0])} To £{" "}
+                   From PKR {formatPrice(data?.post?.community_price[0])} To PKR{" "}
                    {formatPrice(
                      data?.post?.community_price[
                        data?.post?.community_price?.length - 1
@@ -589,7 +816,7 @@ setData((prevData) =>
                    marginLeft: 8,
                  }}
                >
-                 £ {formatPrice(data?.post?.asking_price ?? 0)}
+                 PKR {formatPrice(data?.post?.asking_price ?? 0)}
                  {data?.type === "rent" ? `/${data?.post?.rent_type ?? ""}` : ""}
                </Text>
              </View>
@@ -807,7 +1034,7 @@ setData((prevData) =>
                 </View>
               <TouchableOpacity  activeOpacity={1}
               onPress={()=>{setShowShare(true)}}>
-                 <Share />
+              <ShareIcon />
                </TouchableOpacity>
              </View>
            </View>
@@ -851,7 +1078,7 @@ setData((prevData) =>
                              </View>
                                    )}
          <View style={{ marginTop: vs(20),flex:1 }}>
-           <Text style={styles.heading}>
+           <Text style={[styles.heading,{marginLeft:vs(10)}]}>
              Comments ({comments?.data?.length || 0})
            </Text>
  
@@ -945,6 +1172,11 @@ setData((prevData) =>
          />
        )}
                   <Modal visible={showShare} animationType="slide" transparent>
+                    <ScrollView
+  style={{ flex: 1 }}
+  contentContainerStyle={{ flexGrow: 1 }}
+  keyboardShouldPersistTaps="handled"
+>
                           <SafeAreaView
                                                                                                                         style={{ flex: 1 }}
                                                                                                                         edges={[ "bottom", "left", "right"]}
@@ -984,7 +1216,7 @@ setData((prevData) =>
          initialValues={{
            recepient_email: "",
            message: "",
-           link:`https://sweetghar.com/postRedirect?post_id=${post_id}&&type=post`,
+           link:`https://www.sweetghar.com/postRedirect?post_id=${post_id}&&type=post`,
            post_id:post_id,
            post_type:data?.type,
            post_image:data?.post_images?.[0]?? "",
@@ -1029,7 +1261,190 @@ setData((prevData) =>
  
            <View style={{ flex: 1 }}>
  
-          
+          <View
+  style={{
+    marginBottom: 20,
+  }}
+>
+  <Text
+    style={{
+      fontSize: 14,
+      fontWeight: "600",
+      marginBottom: 12,
+      fontFamily: "PopinRegula",
+    }}
+  >
+    Share via
+  </Text>
+
+  <View
+    style={{
+      flexDirection: "row",
+      justifyContent: "space-between",
+    }}
+  >
+    {/* WhatsApp */}
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() => shareOnSocial("whatsapp")}
+      style={{
+        alignItems: "center",
+        width: "20%",
+      }}
+    >
+      <View
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 26,
+          backgroundColor: "#25D366",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <FontAwesome
+          name="whatsapp"
+          size={27}
+          color="#fff"
+        />
+      </View>
+
+      <Text
+        style={{
+          fontSize: 11,
+          marginTop: 6,
+          fontFamily: "PopinRegula",
+        }}
+      >
+        WhatsApp
+      </Text>
+    </TouchableOpacity>
+
+    {/* Facebook */}
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() => shareOnSocial("facebook")}
+      style={{
+        alignItems: "center",
+        width: "20%",
+      }}
+    >
+      <View
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 26,
+          backgroundColor: "#1877F2",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <FontAwesome
+          name="facebook"
+          size={26}
+          color="#fff"
+        />
+      </View>
+
+      <Text
+        style={{
+          fontSize: 11,
+          marginTop: 6,
+          fontFamily: "PopinRegula",
+        }}
+      >
+        Facebook
+      </Text>
+    </TouchableOpacity>
+
+    {/* Twitter / X */}
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() => shareOnSocial("twitter")}
+      style={{
+        alignItems: "center",
+        width: "20%",
+      }}
+    >
+      <View
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 26,
+          backgroundColor: "#000",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Text
+          style={{
+            color: "#fff",
+            fontSize: 22,
+            fontWeight: "700",
+          }}
+        >
+          X
+        </Text>
+      </View>
+
+      <Text
+        style={{
+          fontSize: 11,
+          marginTop: 6,
+          fontFamily: "PopinRegula",
+        }}
+      >
+        Twitter
+      </Text>
+    </TouchableOpacity>
+
+    {/* LinkedIn */}
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() => shareOnSocial("linkedin")}
+      style={{
+        alignItems: "center",
+        width: "20%",
+      }}
+    >
+      <View
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 26,
+          backgroundColor: "#0A66C2",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <FontAwesome
+          name="linkedin"
+          size={25}
+          color="#fff"
+        />
+      </View>
+
+      <Text
+        style={{
+          fontSize: 11,
+          marginTop: 6,
+          fontFamily: "PopinRegula",
+        }}
+      >
+        LinkedIn
+      </Text>
+    </TouchableOpacity>
+  </View>
+
+  <View
+    style={{
+      height: 1,
+      backgroundColor: "#e5e7eb",
+      marginTop: 20,
+      marginBottom: 5,
+    }}
+  />
+</View>
              <FormikInput
                      name="recepient_email"
                      placeholder="Recipient Email"
@@ -1157,6 +1572,7 @@ setData((prevData) =>
    </View>
    </SafeAreaView>
    <Loading isLoading={sharing} text="Sharing..."/>
+   </ScrollView>
  </Modal>
    <Modal visible={singleView} animationType="slide" onRequestClose={() => {    setSingleView(false);
      setSinglePost(null);

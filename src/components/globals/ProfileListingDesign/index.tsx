@@ -140,10 +140,10 @@ const toggleSave = async () => {
                   ? item?.data?.address?.slice(0, 25) + "..."
                   : item?.data?.address}
               </Text>
-
+{item?.data?.license_no&&(
               <Text style={{ color: Colors.light.textGray, marginTop: vs(5) ,fontFamily: "PopinRegula",}}>
                 License# {item?.data?.license_no}
-              </Text>
+              </Text>)}
             </View>
             <Text style={{ color: Colors.light.textGray, marginTop: vs(5),fontFamily: "PopinRegula", }} >{item?.data?.contact}</Text>
              <View className="flex-row items-center " >

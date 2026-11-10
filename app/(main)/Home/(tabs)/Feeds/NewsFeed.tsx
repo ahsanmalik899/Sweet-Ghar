@@ -75,6 +75,7 @@ const NewsFeeds = () => {
     { id: 10, name: "Plumbers" },
     { id: 11, name: "Painters" },
     { id: 12, name: "Investors" },
+    {id:13,name:"Material Suppliers"}
   ];
 
   const renderFilterItem = ({ item }) => {
@@ -187,8 +188,8 @@ useEffect(() => {
         onPress={() => {
     const url =
       Platform.OS === "ios"
-        ? "https://apps.apple.com/app/idYOUR_APP_ID" 
-        : "https://play.google.com/store/apps/details?id=com.revnosoft.homeilove.uk";
+        ? "https://apps.apple.com/aprp/idYOUR_APP_ID" 
+        : "https://play.google.com/store/apps/details?id=com.revnosoft.sweetghar";
 
     Linking.openURL(url);
   }}

@@ -1,5 +1,6 @@
 import Commercial from '@assets/icons/PostProperty/commercials.svg'
 import Farm from '@assets/icons/PostProperty/farm-land.svg'
+import Holydays from '@assets/icons/PostProperty/holydays.svg'
 import Home from '@assets/icons/PostProperty/home.svg'
 import Colors from '@src/constants/Colors'
 import { hs, ms, vs } from '@utils/design/design'
@@ -18,7 +19,7 @@ const index = ({value,onPress,errorText}:RentAndSaleProps) => {
           <Home/>
            <Text style={[value === "House" ? styles.TextActive : styles.Text]}>House</Text>
          </TouchableOpacity>
-   
+
          <TouchableOpacity
           activeOpacity={1}
          className="items-center"
@@ -37,7 +38,18 @@ const index = ({value,onPress,errorText}:RentAndSaleProps) => {
           <Farm/>
            <Text style={[value === "Farms/Lands" ? styles.TextActive : styles.Text]}>Farms/Lands</Text>
          </TouchableOpacity>
+         
        </View>
+       <TouchableOpacity
+       
+           activeOpacity={1}
+         className="items-center mt-5"
+           style={[value === "Holidays" ? styles.activeButton : styles.Button]}
+          onPress={()=>onPress('Holidays')}
+         >
+             <Holydays/>
+           <Text style={[value === "Holidays" ? styles.TextActive : styles.Text]}>Holidays</Text>
+         </TouchableOpacity>
         { errorText && (
                              <Text
                                style={{ color: Colors.light.red, marginTop: vs(5) }}

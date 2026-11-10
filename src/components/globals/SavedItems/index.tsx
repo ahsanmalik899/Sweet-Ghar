@@ -336,7 +336,7 @@ else if(item?.type==="community"){
                   fontFamily: "PopinRegula",
                 }}
               >
-               From £ {item?.data?.price}
+               From PKR {item?.data?.price}
                 
               </Text>
               {item?.data?.post_type === "Trending" && (
@@ -638,7 +638,7 @@ else{
                    fontFamily: "PopinRegular",
                  }}
                >
-                 £ {formatPrice(item?.data?.price.toString())}
+                 PKR {formatPrice(item?.data?.price.toString())}
                  {item?.data?.property_for === "rent" && (
                    <Text
                      style={{

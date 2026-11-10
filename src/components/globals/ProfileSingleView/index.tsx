@@ -1,11 +1,11 @@
 
-import { useAcceptRequestApiMutation, useAskvaluationapiMutation, useCancelRequestApiMutation, useCheckReviewApiQuery, useGetotherPastWorkQuery, useGetProfilesForConectionQuery, useGetSingleProfileQuery, useLazyGetRandomAdQuery, useSaveItemApiMutation, useSendRequestMutation, useShare_profileApiMutation, useUnfollowApiMutation, useUnsaveItemApiMutation, useUserAgentPastPostsApiQuery, useWriteReviewApiMutation } from '@/store/api/user/MainApi';
+import { useAcceptRequestApiMutation, useAskvaluationapiMutation, useCancelRequestApiMutation, useCheckReviewApiQuery, useGetotherPastWorkQuery, useGetProfileReviewsQuery, useGetProfilesForConectionQuery, useGetSingleProfileQuery, useLazyGetRandomAdQuery, useSaveItemApiMutation, useSendRequestMutation, useShare_profileApiMutation, useUnfollowApiMutation, useUnsaveItemApiMutation, useUserAgentPastPostsApiQuery, useWriteReviewApiMutation } from '@/store/api/user/MainApi';
 import { userdata } from '@/store/slices/selector/user';
 import Call from "@assets/Buy/call.svg";
 import Cross from "@assets/CreateProfile/cross.svg";
 import RedHeart from "@assets/CreateProfile/heart-red.svg";
 import Heart from "@assets/icons/heart.svg";
-import Share from "@assets/icons/share.svg";
+import ShareIcon from "@assets/icons/share.svg";
 import NoImage from "@assets/SideBar/no_images.png";
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
@@ -16,13 +16,15 @@ import { hs, ms, vs } from '@utils/design/design';
 import { ImageFormater } from '@utils/ImageFormat';
 import { makeCall } from '@utils/makeCall';
 import * as Clipboard from "expo-clipboard";
+import { File, Paths } from "expo-file-system";
 import { router } from 'expo-router';
 import * as WebBrowser from "expo-web-browser";
 import { Formik } from 'formik';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Easing, FlatList, Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import RNShare from "react-native-share";
 import * as Yup from 'yup';
 import { AdressInput } from '../AddressInput';
 import CircleImage from '../CircleImage/CircleImage';
@@ -42,6 +44,7 @@ const ProfileSingleView = ({ type, id, setshowModel,setData ,  onSavedChange}: {
    const {data:reviewData,isfetching}=useCheckReviewApiQuery({receiver_profile_id:id,sender_id:user?.id,profile_type:type})
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [reviewModal, setReviewModal] = useState(false);
+  const [showReviewsModal, setShowReviewsModal] = useState(false);
   const [review, setReview] = useState("");
   const [postrating, setpostRating] = useState(0);
   useEffect(()=>{
@@ -57,7 +60,186 @@ setpostRating(Number(reviewData?.data?.rating)||0)
     const [acceptRequestApi, { isLoading: accepting }] = useAcceptRequestApiMutation();
   const [showShare, setShowShare] = useState(false);
   const [askEvaluation, { isLoading: askEvaluationLoading }] = useAskvaluationapiMutation();
- 
+ const downloadShareImage = async (
+  imageUrl: string,
+  profileId: string | number
+) => {
+  try {
+    if (!imageUrl) {
+      return null;
+    }
+
+    console.log("Remote profile image:", imageUrl);
+
+    const lowerUrl = imageUrl.toLowerCase();
+
+    let extension = "jpg";
+
+    if (lowerUrl.includes(".png")) {
+      extension = "png";
+    } else if (lowerUrl.includes(".webp")) {
+      extension = "webp";
+    } else if (lowerUrl.includes(".jpeg")) {
+      extension = "jpeg";
+    }
+
+    const destination = new File(
+      Paths.cache,
+      `sweetghar-profile-${profileId}-${Date.now()}.${extension}`
+    );
+
+    const downloadedFile = await File.downloadFileAsync(
+      imageUrl,
+      destination
+    );
+
+    console.log("Downloaded profile image:", downloadedFile.uri);
+
+    return downloadedFile.uri;
+
+  } catch (error) {
+    console.log("Profile image download error:", error);
+    return null;
+  }
+};
+const shareOnSocial = async (
+  platform: "whatsapp" | "facebook" | "twitter" | "linkedin"| "more"
+) => {
+  try {
+    if (!id) {
+      renderToastError("Profile not found");
+      return;
+    }
+
+    const profileType = type?.toLowerCase();
+
+    const profileUrl =
+      `https://www.sweetghar.com/postRedirect?post_id=${id}&&type=profile&&profile_type=${profileType}`;
+
+   const formatProfileType = (value?: string) => {
+  if (!value) return "Professional";
+
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const profileTypeLabel = formatProfileType(type);
+
+const location = [
+  profile?.city,
+  profile?.state,
+]
+  .filter(Boolean)
+  .join(", ");
+
+const message =
+  `Property ${profileTypeLabel}` +
+  `${profile?.business_name ? ` - ${profile.business_name}` : ""}` +
+  `${location ? ` in ${location}` : ""}` +
+  `\n${profileUrl}`;
+    // Cover first, logo as fallback
+    const remoteImage = profile?.cover
+      ? ImageFormater(profile.cover)
+      : profile?.logo
+      ? ImageFormater(profile.logo)
+      : null;
+
+    console.log("PROFILE ID:", id);
+    console.log("PROFILE TYPE:", profileType);
+    console.log("PROFILE URL:", profileUrl);
+    console.log("REMOTE IMAGE:", remoteImage);
+
+    let localImage: string | null = null;
+
+    if (remoteImage) {
+      localImage = await downloadShareImage(
+        remoteImage,
+        id
+      );
+    }
+
+    console.log("LOCAL IMAGE:", localImage);
+
+    const shareOptions: any = {
+      title: "Share SweetGhar Profile",
+      message,
+      failOnCancel: false,
+
+      ...(Platform.OS === "android" && {
+        useInternalStorage: true,
+      }),
+
+      ...(localImage && {
+        url: localImage,
+        type: "image/*",
+      }),
+    };
+
+    // WhatsApp
+    if (platform === "whatsapp") {
+      await RNShare.shareSingle({
+        ...shareOptions,
+        social: RNShare.Social.WHATSAPP,
+      });
+
+      return;
+    }
+
+    // Facebook
+    if (platform === "facebook") {
+      await RNShare.shareSingle({
+        ...shareOptions,
+        social: RNShare.Social.FACEBOOK,
+      });
+
+      return;
+    }
+
+    // LinkedIn
+    if (platform === "linkedin") {
+      if (Platform.OS === "android") {
+        await RNShare.shareSingle({
+          ...shareOptions,
+          social: RNShare.Social.LINKEDIN,
+        });
+      } else {
+        await RNShare.open(shareOptions);
+      }
+
+      return;
+    }
+
+    // Twitter / X
+    if (platform === "twitter") {
+      if (Platform.OS === "ios") {
+        await RNShare.shareSingle({
+          ...shareOptions,
+          social: RNShare.Social.TWITTER,
+        });
+      } else {
+        await RNShare.open(shareOptions);
+      }
+
+      return;
+    }
+// More / Default device share sheet
+if (platform === "more") {
+  await RNShare.open({
+    ...shareOptions,
+    failOnCancel: false,
+  });
+
+  return;
+}
+  } catch (error: any) {
+    console.log("Profile social share error:", error);
+
+    renderToastError(
+      error?.message || "Unable to share profile"
+    );
+  }
+};
   const ReviewSchema = Yup.object().shape({
     review: Yup.string()
       .required("Review is required")
@@ -79,6 +261,21 @@ setpostRating(Number(reviewData?.data?.rating)||0)
   const { data, isLoading,refetch:refetchProfile } = useGetSingleProfileQuery({ type: type?.toLocaleLowerCase(), id: id,user_id:user?.id });
   const [share_profileApi, { isLoading: sharing }] = useShare_profileApiMutation();
   const profile = data?.data;
+  const {
+  data: allReviewsData,
+  isLoading: reviewsLoading,
+  refetch: refetchReviews,
+} = useGetProfileReviewsQuery(
+  {
+    receiver_profile_id: id,
+    receiver_profile_type: type,
+  },
+  {
+    skip: !id || !type,
+  }
+);
+
+const allReviews = allReviewsData?.reviews || [];
   const [connectionStatus, setConnectionStatus] = useState("");
 
 useEffect(() => {
@@ -447,9 +644,19 @@ const insets = useSafeAreaInsets();
 
         {/* Services */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Service for</Text>
-          <Text style={styles.text}>{profile?.services||profile?.agent_for}</Text>
-
+          {profile?.material ? (
+    <>
+      <Text style={styles.sectionTitle}>Material Supplies</Text>
+      <Text style={styles.text}>{profile.material}</Text>
+    </>
+  ) : profile?.services || profile?.agent_for ? (
+    <>
+      <Text style={styles.sectionTitle}>Services For</Text>
+      <Text style={styles.text}>
+        {profile?.services || profile?.agent_for}
+      </Text>
+    </>
+  ) : null}
           <Text style={[styles.sectionTitle, { marginTop: 10 }]}>
             Dealing Areas
           </Text>
@@ -493,7 +700,7 @@ const insets = useSafeAreaInsets();
             </TouchableOpacity>
             <TouchableOpacity  activeOpacity={1}
             onPress={() => setShowShare(true)}>
-              <Share />
+              <ShareIcon />
             </TouchableOpacity>
           </View>
           {profile?.users_id!==user.id&&(
@@ -909,13 +1116,23 @@ const insets = useSafeAreaInsets();
               Reviews
             </Text>
 
-            <View style={styles.ratingBox}>
-              <StarRating rating={rating} size={26} />
+          <TouchableOpacity
+  activeOpacity={0.8}
+  style={styles.ratingBox}
+  onPress={() => setShowReviewsModal(true)}
+>
+  <StarRating rating={rating} size={26} />
 
-              <Text style={styles.ratingValue}>{rating.toFixed(1)}</Text>
+  <Text style={styles.ratingValue}>
+    {rating.toFixed(1)}
+  </Text>
 
-              <Text style={styles.reviewCount}>{totalReviews} Reviews</Text>
-            </View>
+  <Text style={styles.reviewCount}>
+    {totalReviews} Reviews
+  </Text>
+
+
+</TouchableOpacity>
 
             <TouchableOpacity
              activeOpacity={1}
@@ -1039,8 +1256,11 @@ const insets = useSafeAreaInsets();
                     </Text>
 
                     {Profiles?.profiles?.map((item, index) => {
-                      const selected =
-                        values.sender_profile_type === item.profile_type.toLowerCase();
+                   const selected =
+  values.sender_profile_type ===
+  (item.profile_type === "Business" || item.profile_type === "Private"
+    ? item.profile_type
+    : item.profile_type.toLowerCase());
 
                       return (
                         <TouchableOpacity
@@ -1055,9 +1275,11 @@ const insets = useSafeAreaInsets();
                           ]}
                           onPress={() => {
                             setFieldValue(
-                              "sender_profile_type",
-                              item.profile_type.toLowerCase()
-                            );
+  "sender_profile_type",
+  item.profile_type === "Business" || item.profile_type === "Private"
+    ? item.profile_type
+    : item.profile_type.toLowerCase()
+);
                             setFieldValue("sender_profile_id", item.profile_id);
                           }}
                         >
@@ -1122,6 +1344,11 @@ const insets = useSafeAreaInsets();
           <Loading isLoading={sendingReview} text='Loading...'/>
       </Modal>
       <Modal visible={showShare} animationType="slide" transparent>
+             <ScrollView
+  style={{ flex: 1 }}
+  contentContainerStyle={{ flexGrow: 1 }}
+  keyboardShouldPersistTaps="handled"
+>
           <SafeAreaView
                                                          style={{ flex: 1 }}
                                                          edges={[ "bottom", "left", "right"]}
@@ -1156,12 +1383,231 @@ const insets = useSafeAreaInsets();
                 <Cross height={vs(24)} width={vs(24)} />
               </TouchableOpacity>
             </View>
+<View
+  style={{
+    marginBottom: 20,
+  }}
+>
+  <Text
+    style={{
+      fontSize: 14,
+      fontWeight: "600",
+      marginBottom: 12,
+      fontFamily: "PopinRegula",
+    }}
+  >
+    Share via
+  </Text>
 
+  <View
+    style={{
+      flexDirection: "row",
+      justifyContent: "space-between",
+    }}
+  >
+    {/* WhatsApp */}
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() => shareOnSocial("whatsapp")}
+      style={{
+        alignItems: "center",
+        width: "20%",
+      }}
+    >
+      <View
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 26,
+          backgroundColor: "#25D366",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Ionicons
+          name="logo-whatsapp"
+          size={27}
+          color="#fff"
+        />
+      </View>
+
+      <Text
+        style={{
+          fontSize: 11,
+          marginTop: 6,
+          fontFamily: "PopinRegula",
+        }}
+      >
+        WhatsApp
+      </Text>
+    </TouchableOpacity>
+
+    {/* Facebook */}
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() => shareOnSocial("facebook")}
+      style={{
+        alignItems: "center",
+        width: "20%",
+      }}
+    >
+      <View
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 26,
+          backgroundColor: "#1877F2",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Ionicons
+          name="logo-facebook"
+          size={27}
+          color="#fff"
+        />
+      </View>
+
+      <Text
+        style={{
+          fontSize: 11,
+          marginTop: 6,
+          fontFamily: "PopinRegula",
+        }}
+      >
+        Facebook
+      </Text>
+    </TouchableOpacity>
+
+    {/* Twitter / X */}
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() => shareOnSocial("twitter")}
+      style={{
+        alignItems: "center",
+        width: "20%",
+      }}
+    >
+      <View
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 26,
+          backgroundColor: "#000",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Text
+          style={{
+            color: "#fff",
+            fontSize: 22,
+            fontWeight: "700",
+          }}
+        >
+          X
+        </Text>
+      </View>
+
+      <Text
+        style={{
+          fontSize: 11,
+          marginTop: 6,
+          fontFamily: "PopinRegula",
+        }}
+      >
+        Twitter
+      </Text>
+    </TouchableOpacity>
+
+    {/* LinkedIn */}
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() => shareOnSocial("linkedin")}
+      style={{
+        alignItems: "center",
+        width: "20%",
+      }}
+    >
+      <View
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 26,
+          backgroundColor: "#0A66C2",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Ionicons
+          name="logo-linkedin"
+          size={26}
+          color="#fff"
+        />
+      </View>
+
+      <Text
+        style={{
+          fontSize: 11,
+          marginTop: 6,
+          fontFamily: "PopinRegula",
+        }}
+      >
+        LinkedIn
+      </Text>
+    </TouchableOpacity>
+    {/* More */}
+<TouchableOpacity
+  activeOpacity={0.8}
+  onPress={() => shareOnSocial("more")}
+  style={{
+    alignItems: "center",
+    width: "20%",
+  }}
+>
+  <View
+    style={{
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: "#6B7280",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    <Ionicons
+      name="ellipsis-horizontal"
+      size={28}
+      color="#fff"
+    />
+  </View>
+
+  <Text
+    style={{
+      fontSize: 11,
+      marginTop: 6,
+      fontFamily: "PopinRegula",
+    }}
+  >
+    More
+  </Text>
+</TouchableOpacity>
+  </View>
+
+  <View
+    style={{
+      height: 1,
+      backgroundColor: "#e5e7eb",
+      marginTop: 20,
+      marginBottom: 5,
+    }}
+  />
+</View>
             <Formik
               initialValues={{
                 recepient_email: "",
                 message: "",
-                link: `https://sweetghar.com/postRedirect?post_id=${id}&&type=${"profile"}&&profile_type=${type}`,
+                link: `https://www.sweetghar.com/postRedirect?post_id=${id}&&type=${"profile"}&&profile_type=${type}`,
                 post_id: id,
                 type: type.toLocaleLowerCase(),
               }}
@@ -1332,6 +1778,8 @@ const insets = useSafeAreaInsets();
           </View>
         </View>
         </SafeAreaView>
+    </ScrollView>
+
         <Loading isLoading={sharing} text="Sharing..." />
       </Modal>
                  <Modal visible={showSaved} onRequestClose={() => setShowSaved(false)} animationType="slide"  statusBarTranslucent>
@@ -1409,6 +1857,189 @@ const insets = useSafeAreaInsets();
                     </TouchableOpacity>
                     </SafeAreaView>
                   </Modal>
+                  <Modal
+  visible={showReviewsModal}
+  transparent
+  animationType="slide"
+  onRequestClose={() => setShowReviewsModal(false)}
+>
+  <SafeAreaView style={{ flex: 1 }}>
+    <View style={styles.reviewsOverlay}>
+
+      <View style={styles.reviewsModalContainer}>
+
+        {/* Header */}
+        <View style={styles.reviewsHeader}>
+
+          <View>
+            <Text style={styles.reviewsTitle}>
+              Ratings & Reviews
+            </Text>
+
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginTop: 4,
+              }}
+            >
+              <StarRating rating={rating} size={18} />
+
+              <Text
+                style={{
+                  marginLeft: 8,
+                  fontFamily: "PopinRegula",
+                  fontWeight: "600",
+                }}
+              >
+                {rating.toFixed(1)} ({totalReviews} Reviews)
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => setShowReviewsModal(false)}
+          >
+            <Ionicons
+              name="close"
+              size={28}
+              color={Colors.light.textGray}
+            />
+          </TouchableOpacity>
+
+        </View>
+
+        <View style={styles.divider} />
+
+        {/* Reviews */}
+        {reviewsLoading ? (
+
+          <Loading
+            isLoading={true}
+            text="Loading reviews..."
+          />
+
+        ) : allReviews.length === 0 ? (
+
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Text
+              style={{
+                fontFamily: "PopinRegula",
+                color: Colors.light.textGray,
+              }}
+            >
+              No reviews yet
+            </Text>
+          </View>
+
+        ) : (
+
+          <FlatList
+            data={allReviews}
+            keyExtractor={(item: any, index) =>
+              item.id?.toString() || index.toString()
+            }
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{
+              paddingBottom: vs(30),
+            }}
+            renderItem={({ item }: any) => (
+
+              <View style={styles.singleReviewCard}>
+
+                {/* Reviewer */}
+                <View style={styles.reviewUserRow}>
+
+                  <CircleImage
+                    Size={45}
+                    source={{
+                      uri: ImageFormater(item?.reviewer_logo),
+                    }}
+                  />
+
+                  <View
+                    style={{
+                      flex: 1,
+                      marginLeft: hs(10),
+                    }}
+                  >
+                    <Text style={styles.reviewerName}>
+                      {item?.reviewer_name || "User"}
+                    </Text>
+
+                    <Text style={styles.reviewerType}>
+                      {item?.sender_profile_type}
+                    </Text>
+                  </View>
+
+                  <View
+                    style={{
+                      alignItems: "flex-end",
+                    }}
+                  >
+                    <StarRating
+                      rating={Number(item?.rating || 0)}
+                      size={16}
+                    />
+
+                    <Text style={styles.singleRating}>
+                      {Number(item?.rating || 0).toFixed(1)}
+                    </Text>
+                  </View>
+
+                </View>
+
+                {/* Comment */}
+                {item?.review ? (
+                  <View style={{ marginTop: vs(12) }}>
+
+                    <Text style={styles.reviewLabel}>
+                      Review
+                    </Text>
+
+                    <Text style={styles.reviewText}>
+                      {item.review}
+                    </Text>
+
+                  </View>
+                ) : null}
+
+                {/* Important facts */}
+                {item?.imp_facts ? (
+                  <View
+                    style={{
+                      marginTop: vs(10),
+                    }}
+                  >
+                    <Text style={styles.reviewLabel}>
+                      Experience
+                    </Text>
+
+                    <Text style={styles.reviewText}>
+                      {item.imp_facts}
+                    </Text>
+                  </View>
+                ) : null}
+
+              </View>
+
+            )}
+          />
+
+        )}
+
+      </View>
+
+    </View>
+  </SafeAreaView>
+</Modal>
                   <Loading isLoading={askEvaluationLoading} text='Loading..'/>
                 
     </>
@@ -1423,6 +2054,83 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  reviewsOverlay: {
+  flex: 1,
+  backgroundColor: "rgba(0,0,0,0.45)",
+  justifyContent: "flex-end",
+},
+
+reviewsModalContainer: {
+  backgroundColor: "#fff",
+  borderTopLeftRadius: hs(20),
+  borderTopRightRadius: hs(20),
+  paddingHorizontal: hs(20),
+  paddingTop: vs(20),
+  height: "80%",
+},
+
+reviewsHeader: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+},
+
+reviewsTitle: {
+  fontSize: ms(20),
+  fontWeight: "700",
+  fontFamily: "PopinRegula",
+  color: Colors.light.textGray,
+},
+
+singleReviewCard: {
+  backgroundColor: "#fff",
+  borderRadius: hs(12),
+  padding: hs(15),
+  marginVertical: vs(8),
+  borderWidth: 1,
+  borderColor: "#E5E5E5",
+},
+
+reviewUserRow: {
+  flexDirection: "row",
+  alignItems: "center",
+},
+
+reviewerName: {
+  fontSize: ms(15),
+  fontWeight: "700",
+  fontFamily: "PopinRegula",
+  color: Colors.light.textGray,
+},
+
+reviewerType: {
+  fontSize: ms(12),
+  fontFamily: "PopinRegula",
+  color: "#777",
+  marginTop: 2,
+},
+
+singleRating: {
+  fontSize: ms(12),
+  fontWeight: "600",
+  fontFamily: "PopinRegula",
+  marginTop: 3,
+},
+
+reviewLabel: {
+  fontSize: ms(13),
+  fontWeight: "700",
+  fontFamily: "PopinRegula",
+  color: Colors.light.DarkGreen,
+},
+
+reviewText: {
+  fontSize: ms(13),
+  fontFamily: "PopinRegula",
+  color: Colors.light.textGray,
+  marginTop: vs(4),
+  lineHeight: ms(20),
+},
   adCard: {
     width: "100%",
     height: vs(100),

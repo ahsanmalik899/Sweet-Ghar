@@ -1,5 +1,6 @@
 import Colors from "@src/constants/Colors";
 import { hs, ms, vs } from "@utils/design/design";
+import { formatPrice } from "@utils/PriceFormater";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { FormikInput } from "../FormictInput";
 import { FormikDropdown } from "../FormikDropdown/indes";
@@ -204,7 +205,19 @@ const index = ({
         required
         errorText={errors.price1}
       />
-
+{values.price1 ? (
+  <Text
+    style={{
+      marginTop: 5,
+      marginLeft: 5,
+      fontWeight:"700",
+      fontFamily: "PopinRegula",
+      color: Colors.light.DarkGreen,
+    }}
+  >
+    PKR {formatPrice(values.price1)}
+  </Text>
+) : null}
       {count > 1 && (
         <View>
           <View
@@ -402,6 +415,19 @@ const index = ({
             required
             errorText={errors.price2}
           />
+          {values.price2 ? (
+  <Text
+    style={{
+      marginTop: 5,
+      marginLeft: 5,
+      fontWeight:"700",
+      fontFamily: "PopinRegula",
+      color: Colors.light.DarkGreen,
+    }}
+  >
+    PKR {formatPrice(values.price2)}
+  </Text>
+) : null}
         </View>
       )}
       {count > 2 && (
@@ -601,6 +627,19 @@ const index = ({
             required
             errorText={errors.price3}
           />
+          {values.price3 ? (
+  <Text
+    style={{
+      marginTop: 5,
+      marginLeft: 5,
+      fontWeight:"700",
+      fontFamily: "PopinRegula",
+      color: Colors.light.DarkGreen,
+    }}
+  >
+    PKR {formatPrice(values.price3)}
+  </Text>
+) : null}
         </View>
       )}
   {count>3&&(
@@ -800,7 +839,19 @@ const index = ({
         required
         errorText={errors.price4}
       />
-       
+            {values.price4 ? (
+  <Text
+    style={{
+      marginTop: 5,
+      marginLeft: 5,
+      fontWeight:"700",
+      fontFamily: "PopinRegula",
+      color: Colors.light.DarkGreen,
+    }}
+  >
+    PKR {formatPrice(values.price4)}
+  </Text>
+) : null}
       </View>
       )}
         {count>4&&(
@@ -1000,7 +1051,19 @@ const index = ({
         required
         errorText={errors.price5}
       />
-       
+            {values.price5 ? (
+  <Text
+    style={{
+      marginTop: 5,
+      marginLeft: 5,
+      fontWeight:"700",
+      fontFamily: "PopinRegula",
+      color: Colors.light.DarkGreen,
+    }}
+  >
+    PKR {formatPrice(values.price5)}
+  </Text>
+) : null}
       </View>
       )}
 

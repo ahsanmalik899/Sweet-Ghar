@@ -40,6 +40,7 @@ const index = () => {
     { id: 8, name: "Plumber" },
     { id: 9, name: "Painter" },
     { id: 10, name: "Investor" },
+      { id: 11, name: "Material_supplier" },
   ];
 useFocusEffect(
   useCallback(() => {

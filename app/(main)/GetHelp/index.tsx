@@ -1,6 +1,7 @@
 import MortgageExpert from "@assets/GetHelp/mortgageexpert.svg";
 import PropertyInvestor from "@assets/GetHelp/propertyInvestor.svg";
 import ReputedAgent from "@assets/GetHelp/reputeAgent.svg";
+import Builder from "@assets/HomeRomance/builderh.svg";
 import HeaderWithBack from "@src/components/globals/HeaderWithBack";
 import LargeButton from "@src/components/globals/LaregeButton";
 import SideBarCard from "@src/components/globals/SideBarCard";
@@ -13,17 +14,7 @@ const index = () => {
       <HeaderWithBack title="Find Expert"  />
       <View style={{ marginHorizontal: hs(20), marginTop: vs(20) }}>
         <View className="flex-row justify-between">
-          <SideBarCard
-            Svg={MortgageExpert}
-            text="Mortgage Experts"
-            onPress={() => {
-              router.navigate({
-                pathname: "/(main)/GetHelpListing",
-                params: { type: "mortgage" },
-              });
-            }}
-            type={"Buy"}
-          />
+        
           <SideBarCard
             Svg={ReputedAgent}
             text="Reputed Agents"
@@ -35,6 +26,19 @@ const index = () => {
             }}
             type={"Buy"}
           />
+          
+          <SideBarCard
+            text="Home Builders"
+            Svg={Builder}
+            type="Buy"
+            onPress={() => {
+              router.navigate({
+                pathname: "/(main)/GetHelpListing",
+                params: { type: "builder" },
+              });
+            }}
+          />
+      
         </View>
         <View className="flex-row justify-between">
           <SideBarCard
@@ -44,6 +48,17 @@ const index = () => {
               router.navigate({
                 pathname: "/(main)/GetHelpListing",
                 params: { type: "investor" },
+              });
+            }}
+            type={"Buy"}
+          />
+            <SideBarCard
+            Svg={MortgageExpert}
+            text="Mortgage Experts"
+            onPress={() => {
+              router.navigate({
+                pathname: "/(main)/GetHelpListing",
+                params: { type: "mortgage" },
               });
             }}
             type={"Buy"}

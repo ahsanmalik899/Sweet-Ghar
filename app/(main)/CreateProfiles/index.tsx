@@ -1,15 +1,15 @@
 import {
-  useCapturePaymentMutation,
+  useCaptureAlfalahPaymentMutation,
   useCreateProfileMutation,
   useGetPriceQuery,
   useGetSingleProfileQuery,
   useGetUserWalletQuery,
   useUpdateProfileMutation,
+  useVerifyAlfalahPaymentMutation,
 } from "@/store/api/user/MainApi";
 import { userdata } from "@/store/slices/selector/user";
 import ImageUpload from "@assets/CreateProfile/uploadimage.svg";
 import Profilelogo from "@assets/CreateProfile/uploadprofilewithcircle.svg";
-import Paypal from "@assets/SideBar/paypal-icon.svg";
 import { MaterialIcons } from "@expo/vector-icons";
 import { AdressInput } from "@src/components/globals/AddressInput";
 import DatePickerField from "@src/components/globals/DatePickerField";
@@ -20,7 +20,7 @@ import { FormikDropdownwithjson } from "@src/components/globals/FormikDropdownwi
 import HeaderWithBack from "@src/components/globals/HeaderWithBack";
 import LargeButton from "@src/components/globals/LaregeButton";
 import Loading from "@src/components/globals/Loading";
-import PapPalPayment from "@src/components/globals/PapPalPayment";
+import AlfalahPayment from "@src/components/globals/PapPalPayment";
 import SelecteAdType from "@src/components/globals/TablikeButton";
 import UploadPic from "@src/components/globals/UploadPic";
 import Colors from "@src/constants/Colors";
@@ -85,7 +85,11 @@ const Index = () => {
   const [valuationFor, setValuationFor] = useState(false);
   const params = useLocalSearchParams();
 
-    const [capturePayment, { isLoading: isCapturing }] = useCapturePaymentMutation();
+  const [capturePayment, { isLoading: isCapturing }] =
+    useCaptureAlfalahPaymentMutation();
+
+  const [verifyAlfalahPayment, { isLoading: isVerifyingAlfalah }] =
+    useVerifyAlfalahPaymentMutation();
   const ProfileType = params.ProfileType as string;
   const id = Number(params.id);
   const edit = params.edit === "true";
@@ -100,10 +104,10 @@ const Index = () => {
     data: amount,
     isLoading: AmountLoading,
     isFetching,
-  } = useGetUserWalletQuery({
-    id: user.id,
-  },
-{skip:!id});
+  } = useGetUserWalletQuery(
+    { id: user.id },
+    { skip: !user?.id }
+  );
   switch (type) {
     case "Builder Profile":
       dataAccordingType = {
@@ -175,8 +179,28 @@ const Index = () => {
         licState: false,
         valuation: false,
       };
+      
       break;
-
+  case "Material Supplier Profile":
+      dataAccordingType = {
+        profileType: "Material_supplier",
+        title: "Material Supplier",
+        serviceTitle: "",
+        serviceDefault: "",
+        isService: false,
+        licenceNoTitle: "License No",
+        serviceOption: [],
+        isLicenceIssue: false,
+        isInvestor: false,
+        servingas: false,
+        multilicence: true,
+        institution: false,
+        licExpiry: false,
+        licence: false,
+        licState: false,
+        valuation: false,
+      };
+      break;
     case "Plumber Profile":
       dataAccordingType = {
         profileType: "Plumber",
@@ -386,11 +410,31 @@ const Index = () => {
     remarks: Yup.string()
       .nullable()
       .max(5000, "Maximum 5000 characters allowed"),
+ MaterialService:
+  dataAccordingType.profileType === "Material_supplier"
+    ? Yup.string().required("Please select Material or Services")
+    : Yup.string().nullable(),
 
+suppleryservices: Yup.string().when("MaterialService", {
+  is: "services",
+  then: (schema) =>
+    schema.required("Please select at least one service"),
+  otherwise: (schema) => schema.nullable(),
+}),
+
+suplertsmaterial: Yup.string().when("MaterialService", {
+  is: "material",
+  then: (schema) =>
+    schema.required("Please select at least one material"),
+  otherwise: (schema) => schema.nullable(),
+}),
     youtube_link: Yup.string().url("Invalid YouTube URL").nullable(),
     institution: Yup.string().nullable(),
     users_id: Yup.number(),
     post_type: Yup.string().required("Please select add type"),
+    payment_method: Yup.string().nullable(),
+    order_id: Yup.string().nullable(),
+    amount: Yup.mixed().nullable(),
     logo: Yup.mixed().nullable(),
     cover: Yup.mixed().nullable(),
     valuation_for: valuationFor
@@ -456,7 +500,20 @@ const Index = () => {
 
               investor_type: "",
               invest_in: "",
+suppleryservices: edit
+  ? data?.data?.services || ""
+  : "",
 
+suplertsmaterial: edit
+  ? data?.data?.material || ""
+  : "",
+   MaterialService: edit
+  ? data?.data?.material
+    ? "material"
+    : data?.data?.services
+      ? "services"
+      : ""
+  : "",
               issuing_authority: edit ? data?.data?.issuing_authority : "",
 
               min_invest: edit ? data?.data?.min_invest : "",
@@ -467,7 +524,7 @@ const Index = () => {
                   ? "Yes"
                   : data?.data?.advisory_service
                 : "",
-
+             
               remarks: edit ? data?.data?.remarks || "" : "",
 
               youtube_link: edit ? data?.data?.youtube_link || "" : "",
@@ -479,6 +536,9 @@ const Index = () => {
               users_id: user.id,
 
               post_type: edit ? data?.data?.post_type || "Normal" : "Normal",
+              payment_method: edit ? data?.data?.payment_method || "" : "",
+              order_id: "",
+              amount: "",
 
               logo: edit ? data?.data?.logo : null,
               cover: edit ? data?.data?.cover : null,
@@ -491,6 +551,18 @@ const Index = () => {
             validationSchema={ProfileSchema}
             onSubmit={async (values) => {
               try {
+                const needsBankPayment =
+                  !edit &&
+                  values.post_type === "Trending" &&
+                  values.payment_method !== "Wallet";
+
+                if (needsBankPayment && !values.order_id) {
+                  renderToastError(
+                    "Please complete payment before creating the profile."
+                  );
+                  return;
+                }
+
                 const formData = new FormData();
 
                 // Append profile type
@@ -681,6 +753,149 @@ const Index = () => {
                   required
                   errorText={errors.business_name}
                 />
+               {dataAccordingType.profileType === "Material_supplier" && (
+  <>
+    <View
+      className="flex-row"
+      style={{ marginTop: vs(10), marginBottom: vs(20) }}
+    >
+      {/* Material Supplies */}
+      <View className="flex-row items-center">
+        <TouchableOpacity
+          activeOpacity={1}
+         onPress={() => {
+  setFieldValue(
+    "MaterialService",
+    values.MaterialService === "material" ? "" : "material"
+  );
+
+  setFieldValue("suppleryservices", "");
+}}
+        >
+          <MaterialIcons
+            size={18}
+            color={Colors.light.DarkGreen}
+            name={
+              values.MaterialService === "material"
+                ? "check-box"
+                : "check-box-outline-blank"
+            }
+          />
+        </TouchableOpacity>
+
+        <Text
+          style={{
+            marginLeft: hs(5),
+            fontFamily: "PopinRegula",
+          }}
+        >
+          Material Supplies
+        </Text>
+      </View>
+
+      {/* Services */}
+      <View
+        className="flex-row items-center"
+        style={{ marginLeft: hs(20) }}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => {
+  setFieldValue(
+    "MaterialService",
+    values.MaterialService === "services" ? "" : "services"
+  );
+
+  setFieldValue("suplertsmaterial", "");
+}}
+        >
+          <MaterialIcons
+            size={18}
+            color={Colors.light.DarkGreen}
+            name={
+              values.MaterialService === "services"
+                ? "check-box"
+                : "check-box-outline-blank"
+            }
+          />
+        </TouchableOpacity>
+
+        <Text
+          style={{
+            marginLeft: hs(5),
+            fontFamily: "PopinRegula",
+          }}
+        >
+          Services
+        </Text>
+      </View>
+  
+    </View>
+    {touched.MaterialService && errors.MaterialService && (
+  <Text className="text-red-500">
+    {String(errors.MaterialService)}
+  </Text>
+)}
+  
+  {values.MaterialService === "material" && (
+  <FormikDropdown
+    title="Material For"
+    placeholder="Material For"
+    value={values.suplertsmaterial}
+    options={[
+      "Building Materials",
+      "Tiles | Marble & Flooring",
+      "Paint & Wall Finishes",
+      "Doors | Windows & Glass",
+      "Kitchen & Wardrobe Suppliers",
+      "Sanitary & Bathroom",
+      "Electrical & Lighting",
+      "Plumbing & Water",
+      "Solar & Energy",
+      "Home Appliances",
+    ]}
+    onSelect={(val) => setFieldValue("suplertsmaterial", val)}
+    touched={!!touched.suplertsmaterial}
+    errors={!!errors.suplertsmaterial}
+    errorText={errors.suplertsmaterial}
+    required
+    multipleFields
+    name="suplertsmaterial"
+    setValue={setFieldValue}
+    
+  />
+)}
+
+   {values.MaterialService === "services" && (
+  <FormikDropdown
+    title="Services For"
+    placeholder="Services For"
+    value={values.suppleryservices}
+    options={[
+      "Construction & Renovation",
+      "Architects & Design",
+      "Surveying & Inspection",
+      "Carpentry & Woodwork",
+      "Kitchen & Wardrobe Services",
+      "Glass | Aluminium & Metal Work",
+      "Solar & Energy Services",
+      "HVAC & Cooling",
+      "Security & Smart Home",
+      "Outdoor & Property Maintenance",
+      "Moving & Storage",
+    ]}
+    onSelect={(val) => setFieldValue("suppleryservices", val)}
+    touched={!!touched.suppleryservices}
+    errors={!!errors.suppleryservices}
+    errorText={errors.suppleryservices}
+    required
+    multipleFields
+    name="suppleryservices"
+    setValue={setFieldValue}
+  />
+)}
+  </>
+)}
                 {dataAccordingType.isService && (
                   <>
                     <FormikDropdown
@@ -1092,7 +1307,7 @@ const Index = () => {
          activeOpacity={1}
           onPress={() => {
             setFieldValue("time_period", item.life);
-            setSelectedAmount(formatPrice(item.price));
+            setSelectedAmount(String(item.price));
           }}
         >
           <MaterialIcons
@@ -1117,7 +1332,7 @@ const Index = () => {
       </View>
 
       <Text style={{ fontFamily: "PopinRegula" }}>
-        £{formatPrice(item.price)}
+        PKR{formatPrice(item.price)}
       </Text>
     </View>
   )}
@@ -1193,25 +1408,114 @@ const Index = () => {
                                 Pay and Ad post Atomaticlly
                               </Text>
 
-                              <TouchableOpacity
-                               activeOpacity={1}
-                                className="mb-4"
-                                style={styles.paypalMainButton}
-                                onPress={async () => {
-                                  const errors = await validateForm();
+                            <TouchableOpacity
+  activeOpacity={0.85}
+  className="mb-4"
+  style={styles.paypalMainButton}
+  onPress={async () => {
+    const errors = await validateForm();
 
-                                  setTouched({
-                                    time_period: true,
-                                  });
+    setTouched({
+      time_period: true,
+    });
 
-                                  if (Object.keys(errors).length > 0) {
-                                    console.log(errors);
-                                    renderToastError(
-                                      "Please fill all required fields"
-                                    );
-                                    return;
-                                  }
+    if (Object.keys(errors).length > 0) {
+      console.log(errors);
+      renderToastError("Please fill all required fields");
+      return;
+    }
 
+    if (!selectedAmount) {
+      renderToastError("Please select bundle first");
+      return;
+    }
+
+    await setFieldValue(
+      "payment_method",
+      "Bank Alfalah",
+      false
+    );
+
+    await setFieldValue(
+      "amount",
+      selectedAmount,
+      false
+    );
+
+    await setFieldValue(
+      "order_id",
+      "",
+      false
+    );
+
+    setvisible(true);
+  }}
+>
+  <View style={styles.paypalContent}>
+    <View style={styles.alfalahHeader}>
+      <MaterialIcons
+        name="account-balance-wallet"
+        size={27}
+        color="#FFFFFF"
+      />
+
+      <View style={{ flex: 1 }}>
+        <Text style={styles.paypalText}>
+          Pay via Bank Alfalah
+        </Text>
+
+        <Text style={styles.alfalahSubtitle}>
+          Secure Online Payment
+        </Text>
+      </View>
+
+      <MaterialIcons
+        name="arrow-forward-ios"
+        size={17}
+        color="#FFFFFF"
+      />
+    </View>
+
+    <View style={styles.alfalahDivider} />
+
+    <View style={styles.alfalahMethods}>
+      <View style={styles.alfalahMethod}>
+        <MaterialIcons
+          name="credit-card"
+          size={22}
+          color="#FFFFFF"
+        />
+        <Text style={styles.alfalahMethodText}>
+          Debit / Credit Card
+        </Text>
+      </View>
+
+      <View style={styles.alfalahMethod}>
+        <MaterialIcons
+          name="account-balance-wallet"
+          size={22}
+          color="#FFFFFF"
+        />
+        <Text style={styles.alfalahMethodText}>
+          JazzCash Wallet
+        </Text>
+      </View>
+
+      <View style={styles.alfalahMethod}>
+        <MaterialIcons
+          name="qr-code-2"
+          size={22}
+          color="#FFFFFF"
+        />
+        <Text style={styles.alfalahMethodText}>
+          QR Code
+        </Text>
+      </View>
+    </View>
+  </View>
+</TouchableOpacity>
+                              <LargeButton
+                                handleSubmit={async () => {
                                   if (!selectedAmount) {
                                     renderToastError(
                                       "Please select bundle first"
@@ -1219,35 +1523,28 @@ const Index = () => {
                                     return;
                                   }
 
-                                  setvisible(true);
-                                }}
-                              >
-                                <View style={styles.paypalContent}>
-                                  <Paypal />
+                                  const walletAmount = Number(amount?.amount ?? 0);
 
-                                  <Text style={styles.paypalText}>
-                                    Pay with PayPal or Debit/Credit Card
-                                  </Text>
-                                </View>
-                              </TouchableOpacity>
-                              <LargeButton
-                                handleSubmit={() => {
-                                  if (
-                                    !selectedAmount &&
-                                    selectedAmount === ""
-                                  ) {
-                                    renderToastError(
-                                      "Please select bundle first"
+                                  if (walletAmount >= Number(selectedAmount)) {
+                                    await setFieldValue(
+                                      "payment_method",
+                                      "Wallet",
+                                      false
                                     );
-                                    return;
-                                  }
-                                  if (amount?.amount >= Number(selectedAmount)) {
-                                    setFieldValue("payment_method", "Wallet");
-                                    setFieldValue("amount", selectedAmount);
+                                    await setFieldValue(
+                                      "amount",
+                                      selectedAmount,
+                                      false
+                                    );
+                                    await setFieldValue(
+                                      "order_id",
+                                      "",
+                                      false
+                                    );
                                     handleSubmit();
                                   } else {
                                     renderToastError(
-                                      "You dont have enought amount in wallet plz recharge"
+                                      "You don't have enough amount in wallet. Please recharge."
                                     );
                                   }
                                 }}
@@ -1273,27 +1570,91 @@ const Index = () => {
                     opacity: 0.2,
                   }}
                 />
-                <PapPalPayment
+                <AlfalahPayment
                   amount={selectedAmount}
-                  onPress={(order_id, setApproveUrl) => {
+                  visible={visible}
+                  setVisible={setvisible}
+                  onPress={async (orderId, setApproveUrl) => {
                     try {
-                      setFieldValue("payment_method", "Paypal");
-                      setFieldValue("order_id", order_id);
-                      handleSubmit();
+                      console.log(
+                        "Profile Bank Alfalah payment success:",
+                        orderId
+                      );
+
+                      const verification =
+                        await verifyAlfalahPayment({
+                          order_id: String(orderId),
+                        }).unwrap();
+
+                      console.log(
+                        "Profile Bank Alfalah verification:",
+                        verification
+                      );
+
+                      if (!verification?.success) {
+                        renderToastError(
+                          verification?.message ||
+                            "Unable to verify payment."
+                        );
+                        return;
+                      }
+
+                      if (
+                        String(verification?.status).toUpperCase() !==
+                        "PAID"
+                      ) {
+                        renderToastError(
+                          "Bank payment is not marked as paid."
+                        );
+                        return;
+                      }
+
+                      await setFieldValue(
+                        "order_id",
+                        String(orderId),
+                        false
+                      );
+
+                      await setFieldValue(
+                        "payment_method",
+                        "Bank Alfalah",
+                        false
+                      );
+
+                      await setFieldValue(
+                        "amount",
+                        selectedAmount,
+                        false
+                      );
+
                       setApproveUrl(null);
-                    } catch {
-                      renderToastError("Some thing went rong");
+                      setvisible(false);
+
+                      setTimeout(() => {
+                        handleSubmit();
+                      }, 200);
+                    } catch (error: any) {
+                      console.log(
+                        "Profile Bank Alfalah verification error:",
+                        error
+                      );
+
+                      renderToastError(
+                        error?.data?.message ||
+                          "Payment could not be verified. Profile was not created."
+                      );
                     }
                   }}
-                  setVisible={setvisible}
-                  visible={visible}
                 />
               </>
             )}
           </Formik>
         </View>
       </ScrollView>
-      <Loading isLoading={isLoading} text={`Creating ${type}....`} />
+      <Loading
+        isLoading={isLoading || isVerifyingAlfalah || isCapturing}
+        text={isVerifyingAlfalah ? "Verifying payment..." : `Creating ${type}....`}
+      />
       <Loading isLoading={LodingEditData||UpdateLoading} text="Loading..." />
     </View>
   );
@@ -1303,19 +1664,70 @@ export default Index;
 
 const styles = StyleSheet.create({
   title: { fontSize: ms(14), fontWeight: 600 },
-
-  paypalContent: {
-    flexDirection: "row",
-    alignItems: "center",
+paypalMainButton: {
+  backgroundColor: "#c21c1c",
+  borderRadius: 14,
+  paddingVertical: 16,
+  paddingHorizontal: 15,
+  elevation: 3,
+  shadowColor: "#000",
+  shadowOffset: {
+    width: 0,
+    height: 3,
   },
+  shadowOpacity: 0.15,
+  shadowRadius: 5,
+},
 
-  paypalText: {
-    marginLeft: hs(10),
-    fontSize: ms(14),
-    fontWeight: "600",
-    color: "#003087",
-    fontFamily: "PopinRegula",
-  },
+paypalContent: {
+  flexDirection: "column",
+},
+
+alfalahHeader: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 12,
+},
+
+paypalText: {
+  color: "#FFFFFF",
+  fontSize: 16,
+  fontWeight: "700",
+},
+
+alfalahSubtitle: {
+  color: "#D8EDE4",
+  fontSize: 12,
+  marginTop: 4,
+},
+
+alfalahDivider: {
+  height: 1,
+  backgroundColor: "rgba(255,255,255,0.25)",
+  marginVertical: 14,
+},
+
+alfalahMethods: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 8,
+},
+
+alfalahMethod: {
+  flex: 1,
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+},
+
+alfalahMethodText: {
+  color: "#FFFFFF",
+  fontSize: 10,
+  fontWeight: "600",
+  textAlign: "center",
+},
+  
 
   card: {
     marginVertical: vs(20),
@@ -1329,11 +1741,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 5,
   },
-  paypalMainButton: {
-    backgroundColor: Colors.light.Yellow,
-    borderRadius: ms(8),
-    height: vs(48),
-    justifyContent: "center",
-    alignItems: "center",
-  },
+ 
 });

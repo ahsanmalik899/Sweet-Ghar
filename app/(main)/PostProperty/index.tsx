@@ -1,16 +1,16 @@
 import {
-  useCapturePaymentMutation,
+  useCaptureAlfalahPaymentMutation,
   useGetDataForEditQuery,
   useGetPriceQuery,
   useGetProfilesQuery,
   useGetUserWalletQuery,
   usePostPropertyMutation,
   useUpdatePropertyMutation,
+  useVerifyAlfalahPaymentMutation,
 } from "@/store/api/user/MainApi";
 import { userdata } from "@/store/slices/selector/user";
 import ImageUpload from "@assets/CreateProfile/uploadimage.svg";
 import Profilelogo from "@assets/CreateProfile/uploadprofilewithcircle.svg";
-import Paypal from "@assets/SideBar/paypal-icon.svg";
 import { MaterialIcons } from "@expo/vector-icons";
 import { FlashList } from "@shopify/flash-list";
 import { AdressInput } from "@src/components/globals/AddressInput";
@@ -21,7 +21,7 @@ import { FormikDropdownwithjson } from "@src/components/globals/FormikDropdownwi
 import HeaderWithBack from "@src/components/globals/HeaderWithBack";
 import LargeButton from "@src/components/globals/LaregeButton";
 import Loading from "@src/components/globals/Loading";
-import PapPalPayment from "@src/components/globals/PapPalPayment";
+import AlfalahPayment from "@src/components/globals/PapPalPayment";
 import PropertyType from "@src/components/globals/PropertyType";
 import SelectRentAndSale from "@src/components/globals/SelectRentAndSale";
 import SelecteAdType from "@src/components/globals/TablikeButton";
@@ -50,8 +50,8 @@ const index = () => {
   const params = useLocalSearchParams();
   const type = params.type as string;
   const id = Number(params.id);
-  const [capturePayment, { isLoading: isCapturing }] =
-    useCapturePaymentMutation();
+ const [capturePayment, { isLoading: isCapturing }] =
+  useCaptureAlfalahPaymentMutation();
   const edit = params.edit === "true";
   const [selectedAmount, setSelectedAmount] = useState("");
   const { data: EditData, isLoading: EditLoading } = useGetDataForEditQuery(
@@ -65,6 +65,14 @@ const index = () => {
   } = useGetUserWalletQuery({
     id: user.id,
   });
+  const [
+  verifyAlfalahPayment,
+  {
+    isLoading:
+      isVerifyingAlfalah,
+  },
+] =
+  useVerifyAlfalahPaymentMutation();
   const initialValues = {
     user_id: user.id,
     user_type: user.user_type,
@@ -78,7 +86,10 @@ const index = () => {
     zip: "",
     lat: 0,
     lng: 0,
+      order_id: "",
+  amount: "",
     land_area: "",
+     land_unit: "",
     bedroom: "",
     bathrooms: "",
     purpose: "",
@@ -110,15 +121,22 @@ const index = () => {
     propertyimg: [],
     floorimg: [],
   };
-  const { data: advertisePrices } = useGetPriceQuery({
-    price_type: "property",
-  });
+const { data: advertisePrices } = useGetPriceQuery({
+  price_type:
+    propertType === "Holidays"
+      ? saleType
+        ? "holiday_sale"
+        : "holiday_rent"
+      : saleType
+      ? "sale"
+      : "rent",
+});
 
   const EditinitialValues = useMemo(() => {
     if (!edit || !EditData?.success) return initialValues;
 
     const post = EditData.post;
-setpropertType( post.property_type)
+    setpropertType(post.property_type);
     return {
       user_id: post.user_id,
       user_type: post.user_type || user.user_type,
@@ -133,9 +151,13 @@ setpropertType( post.property_type)
       lat: Number(post.lat) || 0,
       lng: Number(post.lng) || 0,
       land_area: post.land_area || "",
+       land_unit: post.land_unit || "",
       bedroom: post.bedrooms || "",
       bathrooms: post.bathrooms || "",
       purpose: post.purpose || "",
+        order_id: "",
+  amount: "",
+
       detail_property: post.property_details || "",
       asking_price: post.asking_price.toString() || "",
       price_type: post.saleprice_type || "",
@@ -182,7 +204,8 @@ setpropertType( post.property_type)
     property_type: Yup.string().required("Property type is required"),
     furnishing_type: Yup.string().nullable(),
     property_sub_type: Yup.string().required("Property sub type is required"),
-
+order_id: Yup.string().nullable(),
+amount: Yup.mixed().nullable(),
     address: Yup.string().required("Location is required"),
 
     city: Yup.string().required("City is required"),
@@ -200,7 +223,7 @@ setpropertType( post.property_type)
       .required("Longitude is required"),
 
     land_area: Yup.string().required("Area is required"),
-
+land_unit: Yup.string().required("Land unit is required"),
     bedroom: Yup.string().when("property_type", {
       is: "House",
       then: (s) =>
@@ -291,7 +314,7 @@ setpropertType( post.property_type)
   const [visible, setvisible] = useState(false);
   const [UpdateProperty, { isLoading: UpdateLoading }] =
     useUpdatePropertyMutation();
-    console.log(data);
+  console.log(data);
   const [postProperty, { isLoading }] = usePostPropertyMutation();
   return (
     <View className="bg-white flex-1 ">
@@ -335,113 +358,392 @@ setpropertType( post.property_type)
               enableReinitialize={true}
               validationSchema={PostPropertySchema}
               onSubmit={async (values) => {
-                try {
-                  const formData = new FormData();
+  try {
+    console.log(
+      "PROPERTY SUBMIT START"
+    );
 
-                  Object.keys(values).forEach((key) => {
-                    if (
-                      key !== "propertyimg" &&
-                      key !== "floorimg" &&
-                      values[key] !== undefined &&
-                      values[key] !== null
-                    ) {
-                      formData.append(key, String(values[key]));
-                    }
-                  });
+    console.log(
+      "Payment method:",
+      values.payment_method
+    );
 
-                  if (edit && values.post_id) {
-                    formData.append("post_id", String(values.post_id));
-                  }
+    console.log(
+      "Order ID:",
+      values.order_id
+    );
 
-                  if (
-                    Array.isArray(values.propertyimg) &&
-                    values.propertyimg.length > 0
-                  ) {
-                    values.propertyimg.forEach((img, index) => {
-                      if (img.uri) {
-                        formData.append("propertyimg[]", {
-                          uri: img.uri,
-                          name: img.name || `property_${index}.jpg`,
-                          type: img.type || "image/jpeg",
-                        } as any);
-                      }
-                    });
-                  } else {
-                    formData.append("propertyimg", JSON.stringify([]));
-                  }
+    /**
+     * --------------------------------------------------
+     * Verify we have Bank order before creating
+     * paid/trending post
+     * --------------------------------------------------
+     */
+    const needsBankPayment =
+      !edit &&
+      values.normal_trending !==
+        "Normal" &&
+      values.payment_method !==
+        "Wallet";
 
-                  if (
-                    Array.isArray(values.floorimg) &&
-                    values.floorimg.length > 0
-                  ) {
-                    values.floorimg.forEach((img, index) => {
-                      if (img?.uri) {
-                        formData.append("floorimg[]", {
-                          uri: img.uri,
-                          name: img.name || `floor_${index}.jpg`,
-                          type: img.type || "image/jpeg",
-                        } as any);
-                      }
-                    });
-                  } else {
-                    formData.append("floorimg", JSON.stringify([]));
-                  }
+    if (
+      needsBankPayment &&
+      !values.order_id
+    ) {
+      renderToastError(
+        "Please complete payment before posting the property."
+      );
 
-                  for (const pair of formData.entries()) {
-                    console.log(pair[0], pair[1]);
-                  }
+      return;
+    }
 
-                  const result = edit
-                    ? await UpdateProperty(formData)
-                    : await postProperty(formData);
+    /**
+     * --------------------------------------------------
+     * Prepare property FormData
+     * --------------------------------------------------
+     */
+    const formData =
+      new FormData();
 
-                  if (result?.data?.success) {
-                    if (
-                      edit ||
-                      values.normal_trending === "Normal" ||
-                      values.payment_method === "Wallet"
-                    ) {
-                      renderToastSuccess(result.data.message);
+    Object.keys(
+      values
+    ).forEach((key) => {
+      if (
+        key !==
+          "propertyimg" &&
+        key !==
+          "floorimg" &&
+        values[key] !==
+          undefined &&
+        values[key] !==
+          null
+      ) {
+        formData.append(
+          key,
+          String(
+            values[key]
+          )
+        );
+      }
+    });
 
-                      router.replace({
-                        pathname: "/MyPostListing",
-                        params: {
-                          type: values.property_for,
-                          id: result?.data?.post_id,
-                          isShowpost: "true",
-                        },
-                      });
-                    } else {
-                      await capturePayment({
-                        order_id: values.order_id,
-                        user_id: user.id,
-                        upgrade_type: "Post",
-                        profile_type: values.ad_by || "",
-                        upgrade_id: result?.data?.post_id,
-                        upgrade_amount: selectedAmount || 0,
-                      }).unwrap();
+    /**
+     * Important:
+     *
+     * order_id is automatically added above
+     * because it exists in values.
+     */
 
-                      renderToastSuccess(result.data.message);
-                      router.replace({
-                        pathname: "/MyPostListing",
-                        params: {
-                          type: values.property_for,
-                          id: result?.data?.post_id,
-                          isShowpost: "true",
-                        },
-                      });
-                    }
-                  } else {
-                    console.log(result);
-                    renderToastError("Something went wrong!");
-                  }
-                } catch (error) {
-                  console.log("Error:", error);
-                  renderToastError(
-                    "Failed to upload property. Please try again."
-                  );
-                }
-              }}
+    if (
+      edit &&
+      values.post_id
+    ) {
+      formData.append(
+        "post_id",
+        String(
+          values.post_id
+        )
+      );
+    }
+
+    /**
+     * --------------------------------------------------
+     * Property Images
+     * --------------------------------------------------
+     */
+    if (
+      Array.isArray(
+        values.propertyimg
+      ) &&
+      values.propertyimg
+        .length > 0
+    ) {
+      values.propertyimg.forEach(
+        (
+          img,
+          index
+        ) => {
+          if (img.uri) {
+            formData.append(
+              "propertyimg[]",
+              {
+                uri:
+                  img.uri,
+
+                name:
+                  img.name ||
+                  `property_${index}.jpg`,
+
+                type:
+                  img.type ||
+                  "image/jpeg",
+              } as any
+            );
+          }
+        }
+      );
+    } else {
+      formData.append(
+        "propertyimg",
+        JSON.stringify([])
+      );
+    }
+
+    /**
+     * --------------------------------------------------
+     * Floor Images
+     * --------------------------------------------------
+     */
+    if (
+      Array.isArray(
+        values.floorimg
+      ) &&
+      values.floorimg
+        .length > 0
+    ) {
+      values.floorimg.forEach(
+        (
+          img,
+          index
+        ) => {
+          if (
+            img?.uri
+          ) {
+            formData.append(
+              "floorimg[]",
+              {
+                uri:
+                  img.uri,
+
+                name:
+                  img.name ||
+                  `floor_${index}.jpg`,
+
+                type:
+                  img.type ||
+                  "image/jpeg",
+              } as any
+            );
+          }
+        }
+      );
+    } else {
+      formData.append(
+        "floorimg",
+        JSON.stringify([])
+      );
+    }
+
+    /**
+     * Debug
+     */
+    for (
+      const pair of
+      formData.entries()
+    ) {
+      console.log(
+        pair[0],
+        pair[1]
+      );
+    }
+
+    /**
+     * --------------------------------------------------
+     * Create / Update Property
+     * --------------------------------------------------
+     */
+    const result =
+      edit
+        ? await UpdateProperty(
+            formData
+          )
+        : await postProperty(
+            formData
+          );
+
+    console.log(
+      "Property API result:",
+      result
+    );
+
+    if (
+      !result?.data
+        ?.success
+    ) {
+      console.log(
+        result
+      );
+
+      renderToastError(
+        result?.data
+          ?.message ||
+          "Something went wrong!"
+      );
+
+      return;
+    }
+
+    const postId =
+      result?.data
+        ?.post_id;
+
+    /**
+     * --------------------------------------------------
+     * Normal / Edit / Wallet
+     * --------------------------------------------------
+     */
+    if (
+      edit ||
+      values.normal_trending ===
+        "Normal" ||
+      values.payment_method ===
+        "Wallet"
+    ) {
+      renderToastSuccess(
+        result.data.message
+      );
+
+      router.replace({
+        pathname:
+          "/MyPostListing",
+
+        params: {
+          type:
+            values.property_for,
+
+          id:
+            postId,
+
+          isShowpost:
+            "true",
+        },
+      });
+
+      return;
+    }
+
+    /**
+     * --------------------------------------------------
+     * BANK ALFALAH PAYMENT
+     * --------------------------------------------------
+     *
+     * At this point:
+     *
+     * 1. Bank showed success page
+     * 2. order_id exists
+     * 3. Property has been created
+     *
+     * Now Laravel capture endpoint checks
+     * Bank Alfalah OrderStatus API.
+     */
+    if (
+      !values.order_id
+    ) {
+      renderToastError(
+        "Bank Alfalah Order ID is missing."
+      );
+
+      return;
+    }
+
+    console.log(
+      "Capturing Bank Alfalah payment..."
+    );
+
+    console.log(
+      "Order:",
+      values.order_id
+    );
+
+    console.log(
+      "Post ID:",
+      postId
+    );
+
+    const captureResult =
+      await capturePayment({
+        order_id:
+          values.order_id,
+
+        user_id:
+          user.id,
+
+        upgrade_type:
+          "Post",
+
+        profile_type:
+          values.ad_by ||
+          "",
+
+        upgrade_id:
+          postId,
+
+        upgrade_amount:
+          selectedAmount ||
+          0,
+      }).unwrap();
+
+    console.log(
+      "Bank Alfalah capture result:",
+      captureResult
+    );
+
+    if (
+      !captureResult
+        ?.success
+    ) {
+      renderToastError(
+        captureResult
+          ?.message ||
+          "Unable to verify Bank Alfalah payment."
+      );
+
+      return;
+    }
+
+    /**
+     * Payment has now been independently
+     * verified by backend.
+     */
+    renderToastSuccess(
+      result.data.message ||
+      "Property posted successfully."
+    );
+
+    router.replace({
+      pathname:
+        "/MyPostListing",
+
+      params: {
+        type:
+          values.property_for,
+
+        id:
+          postId,
+
+        isShowpost:
+          "true",
+      },
+    });
+
+  } catch (error: any) {
+    console.log(
+      "Property/payment error:",
+      error
+    );
+
+    console.log(
+      "Error data:",
+      error?.data
+    );
+
+    renderToastError(
+      error?.data
+        ?.message ||
+      "Failed to upload property. Please try again."
+    );
+  }
+}}
             >
               {({
                 handleBlur,
@@ -469,6 +771,7 @@ setpropertType( post.property_type)
                       setFieldValue("price_type", "");
                       setFieldValue("rent_type", "");
                       setFieldValue("sale_type", "");
+                      setFieldValue("property_sub_type", "");
                     }}
                   />
 
@@ -477,7 +780,7 @@ setpropertType( post.property_type)
                       <View className="flex-row" style={{ marginTop: vs(20) }}>
                         <View className="flex-row items-center">
                           <TouchableOpacity
-                           activeOpacity={1}
+                            activeOpacity={1}
                             onPress={() => setFieldValue("sale_type", "Normal")}
                           >
                             <MaterialIcons
@@ -504,7 +807,7 @@ setpropertType( post.property_type)
                           style={{ marginLeft: hs(10) }}
                         >
                           <TouchableOpacity
-                           activeOpacity={1}
+                            activeOpacity={1}
                             onPress={() =>
                               setFieldValue("sale_type", "Foreclosure")
                             }
@@ -578,39 +881,89 @@ setpropertType( post.property_type)
                   />
                   <FormikDropdown
                     title={""}
-                    key={values.property_type}
+                     key={`${values.property_for}-${values.property_type}`}
                     setValue={setFieldValue}
                     required
                     placeholder="Property sub type"
                     value={values.property_sub_type}
-                    options={
-                      values.property_type === "House"
-                        ? [
-                            "Detached house",
-                            "Semi-detached house",
-                            "Town house Condo",
-                            "Bungalow Co-op",
-                            "Flats/ Apartments Condop",
-                            "Penthouse",
-                            "Park homes",
-                            "Others",
-                          ]
-                        : values.property_type === "Commercial"
-                        ? [
-                            "office",
-                            "office workspace",
-                            "Retail properties",
-                            "Leisure / Hospitality",
-                            "Others",
-                          ]
-                        : [
-                            "Land",
-                            "Commercial development",
-                            "Industrial development",
-                            "Residential development",
-                            "Farms",
-                          ]
-                    }
+                  options={
+    // =========================
+    // RESIDENTIAL
+    // =========================
+    values.property_type === "House"
+      ? values.property_for === "sale"
+        ? [
+            "House",
+            "Flat / Apartment",
+            "Villa",
+            "Bungalow",
+            "Townhouse",
+            "Duplex",
+            "Penthouse",
+            "Portion",
+            "Other",
+          ]
+        : [
+            "House",
+            "Flat / Apartment",
+            "Upper Portion",
+            "Lower Portion",
+            "Villa",
+            "Bungalow",
+            "Townhouse",
+            "Duplex",
+            "Penthouse",
+            "Room",
+            "Other",
+          ]
+
+    // =========================
+    // COMMERCIAL
+    // =========================
+    : values.property_type === "Commercial"
+      ? [
+          "Shop",
+          "Showroom",
+          "Office",
+          "Commercial Building",
+          "Plaza",
+          "Warehouse",
+          "Factory",
+          "Restaurant / Café",
+          "Hotel",
+          "Guest House",
+          "Commercial Plot",
+          "Mixed-Use Property",
+          "Other",
+        ]
+
+    // =========================
+    // HOLIDAYS
+    // =========================
+    : values.property_type === "Holidays"
+      ? [
+          "Holiday Home",
+          "Cottage",
+          "Chalet",
+          "Farmhouse",
+          "Vacation Villa",
+          "Resort",
+          "Guest House",
+          "Hotel",
+          "Other",
+        ]
+
+    // =========================
+    // FARMS / LANDS
+    // =========================
+    : [
+        "Land",
+        "Commercial development",
+        "Industrial development",
+        "Residential development",
+        "Farms",
+      ]
+  }
                     name="property_sub_type"
                     onSelect={() => {}}
                   />
@@ -667,7 +1020,7 @@ setpropertType( post.property_type)
                   <View className="flex-row justify-between gap-3">
                     <View className="flex-1">
                       <FormikInput
-                        title="Area in Sqft"
+                        title="Area"
                         placeholder="Area in Sqft*"
                         onChangeText={handleChange("land_area")}
                         onBlur={handleBlur("land_area")}
@@ -677,57 +1030,30 @@ setpropertType( post.property_type)
                         required
                         errorText={errors.land_area}
                       />
+                       
                     </View>
-                    {saleType ? (
                       <View className="flex-1">
-                        <FormikDropdown
-                          key={"sale-tenure"}
+                     <FormikDropdown
+                          key={"land-unit"}
                           onSelect={() => {}}
                           options={[
-                            "Freehold",
-                            "Leasehold",
-                            "Joint tenancy with rights of survivorship",
-                            "Tenants by the entirety",
-                            "Community property",
-                            "Owning trust",
-                            "Tenancy in common",
-                            "Others",
-                          ]}
-                          title="Ownership"
+  "Marla",
+  "Kanal",
+  "Square Meters",
+  "Square Feet",
+  "Square Yards",
+]}
+                          title="Land Unit"
                           placeholder="Select"
                           setValue={setFieldValue}
-                          name="tenure"
-                          value={values.tenure}
-                          touched={!!touched.tenure}
-                          errors={!!errors.tenure}
+                          name="land_unit"
+                          value={values.land_unit}
+                          touched={!!touched.land_unit}
+                          errors={!!errors.land_unit}
                           required
-                          errorText={errors.tenure}
+                          errorText={errors.land_unit}
                         />
-                      </View>
-                    ) : (
-                      <View className="flex-1">
-                        <FormikDropdown
-                          key={"rent-tenure"}
-                          onSelect={() => {}}
-                          options={[
-                            "Open",
-                            "Less than 6 months",
-                            "6 months",
-                            "1 year",
-                            "More than 1 year",
-                          ]}
-                          title="Tenancy tenure"
-                          placeholder="Select"
-                          setValue={setFieldValue}
-                          name="tenancy_tenure"
-                          value={values.tenancy_tenure}
-                          touched={!!touched.tenancy_tenure}
-                          errors={!!errors.tenancy_tenure}
-                          required
-                          errorText={errors.tenancy_tenure}
-                        />
-                      </View>
-                    )}
+                        </View>
                   </View>
                   {propertType !== "Farms/Lands" && (
                     <View className="flex-row justify-between gap-3 mt-3">
@@ -831,32 +1157,63 @@ setpropertType( post.property_type)
                     </View>
                   </View>
                   <View className="flex-row justify-between gap-3 mt-3">
-                    <View className="flex-1">
-                      <FormikDropdown
-                        onSelect={() => {}}
-                        options={[
-                          "No",
-                          "Retirement homes",
-                          "Student accomodation",
-                        ]}
-                        title="Purposeful property?"
-                        placeholder=""
-                        setValue={setFieldValue}
-                        name="purpose"
-                        value={values.purpose}
-                        touched={!!touched.purpose}
-                        errors={!!errors.purpose}
-                        required={false}
-                        errorText={errors.purpose}
-                      />
-                    </View>
+                    {saleType ? (
+                      <View className="flex-1">
+                        <FormikDropdown
+                          key={"sale-tenure"}
+                          onSelect={() => {}}
+                          options={[
+                            "Freehold",
+                            "Leasehold",
+                            "Joint tenancy with rights of survivorship",
+                            "Tenants by the entirety",
+                            "Community property",
+                            "Owning trust",
+                            "Tenancy in common",
+                            "Others",
+                          ]}
+                          title="Ownership"
+                          placeholder="Select"
+                          setValue={setFieldValue}
+                          name="tenure"
+                          value={values.tenure}
+                          touched={!!touched.tenure}
+                          errors={!!errors.tenure}
+                          required
+                          errorText={errors.tenure}
+                        />
+                      </View>
+                    ) : (
+                      <View className="flex-1">
+                        <FormikDropdown
+                          key={"rent-tenure"}
+                          onSelect={() => {}}
+                          options={[
+                            "Open",
+                            "Less than 6 months",
+                            "6 months",
+                            "1 year",
+                            "More than 1 year",
+                          ]}
+                          title="Tenancy tenure"
+                          placeholder="Select"
+                          setValue={setFieldValue}
+                          name="tenancy_tenure"
+                          value={values.tenancy_tenure}
+                          touched={!!touched.tenancy_tenure}
+                          errors={!!errors.tenancy_tenure}
+                          required
+                          errorText={errors.tenancy_tenure}
+                        />
+                      </View>
+                    )}
                     <View className="flex-1">
                       <FormikDropdownwithjson
                         onSelect={() => {}}
                         options={[
                           { label: "Newly built", value: "Newly built" },
-                          { label: "5 yrs", value:"5" },
-                          { label: "10 yrs", value: "10"},
+                          { label: "5 yrs", value: "5" },
+                          { label: "10 yrs", value: "10" },
                           { label: "15 yrs", value: "15" },
                           { label: "20 yrs", value: "20" },
                           { label: "25 yrs", value: "25" },
@@ -893,7 +1250,7 @@ setpropertType( post.property_type)
                     </View>
 
                     <View className="flex-1">
-                      {saleType ? (
+                      {saleType && (
                         <FormikInput
                           onBlur={handleBlur("house_charges")}
                           onChangeText={handleChange("house_charges")}
@@ -905,21 +1262,7 @@ setpropertType( post.property_type)
                           required={false}
                           errorText={errors.house_charges}
                         />
-                      ) : (
-                        <FormikDropdown
-                          onSelect={() => {}}
-                          options={["Yes", "No"]}
-                          title="Pet allowed"
-                          placeholder=""
-                          name="pet_allowers"
-                          setValue={setFieldValue}
-                          value={values.pet_allowers}
-                          touched={!!touched.pet_allowers}
-                          errors={!!errors.pet_allowers}
-                          required={false}
-                          errorText={errors.pet_allowers}
-                        />
-                      )}
+                      ) }
                     </View>
                   </View>
                   {!saleType && (
@@ -1035,7 +1378,7 @@ setpropertType( post.property_type)
                       </Text>
                       <View className="flex-row gap-3 items-center justify-between">
                         <TouchableOpacity
-                         activeOpacity={1}
+                          activeOpacity={1}
                           onPress={() => {
                             setFieldValue(
                               "available_on",
@@ -1117,7 +1460,7 @@ setpropertType( post.property_type)
                   >
                     <View className="flex-row items-center">
                       <TouchableOpacity
-                       activeOpacity={1}
+                        activeOpacity={1}
                         onPress={() => {
                           setFieldValue(
                             "property_visit",
@@ -1147,7 +1490,7 @@ setpropertType( post.property_type)
                       style={{ marginLeft: hs(20) }}
                     >
                       <TouchableOpacity
-                       activeOpacity={1}
+                        activeOpacity={1}
                         onPress={() => {
                           setFieldValue(
                             "property_visit",
@@ -1254,6 +1597,19 @@ setpropertType( post.property_type)
                         required
                         errorText={errors.asking_price}
                       />
+                      {values.asking_price ? (
+  <Text
+    style={{
+      marginTop: 5,
+      marginLeft: 5,
+       fontWeight: "700",
+      fontFamily: "PopinRegula",
+      color: Colors.light.DarkGreen,
+    }}
+  >
+    PKR {formatPrice(values.asking_price)}
+  </Text>
+) : null}
                     </View>
                     <View style={{ marginTop: vs(30) }} className="flex-1">
                       {saleType ? (
@@ -1281,10 +1637,18 @@ setpropertType( post.property_type)
                         <FormikDropdownwithjson
                           key={"rent-type"}
                           onSelect={() => {}}
-                          options={[
-                            { label: "Per week", value: "week" },
-                            { label: "per month", value: "month" },
-                          ]}
+                            options={
+    values.property_type === "Holidays"
+      ? [
+          { label: "Per day", value: "day" },
+          { label: "Per week", value: "week" },
+          { label: "Per month", value: "month" },
+        ]
+      : [
+          { label: "Per week", value: "week" },
+          { label: "Per month", value: "month" },
+        ]
+  }
                           title=""
                           placeholder="Rent Type"
                           name="rent_type"
@@ -1362,264 +1726,320 @@ setpropertType( post.property_type)
                       </Text>
                       {data?.total_profiles !== 0 && (
                         <View>
-                          {(data?.profiles_exist?.agent?.exists && data?.profiles_exist?.agent?.status==="Active") && (
-                            <TouchableOpacity
-                             activeOpacity={1}
-                              onPress={() => {
-                                setFieldValue(
-                                  "ad_by",
-                                  values.ad_by === "Agent" ? "" : "Agent"
-                                );
-                              }}
-                            >
-                              <View className="flex-row mt-4 items-center">
-                                <MaterialIcons
-                                  size={25}
-                                  color={Colors.light.DarkGreen}
-                                  name={
-                                    values.ad_by === "Agent"
-                                      ? "check-box"
-                                      : "check-box-outline-blank"
-                                  }
-                                />
-                                <Text
-                                  style={{
-                                    marginLeft: hs(5),
-                                    fontWeight: "500",
-                                    fontFamily: "PopinRegula",
-                                  }}
-                                >
-                                  Agent
-                                </Text>
-                              </View>
-                            </TouchableOpacity>
-                          )}
-                          {(data?.profiles_exist?.builder?.exists && data?.profiles_exist?.builder?.status==="Active") && (
-                            <TouchableOpacity
-                             activeOpacity={1}
-                              onPress={() => {
-                                setFieldValue(
-                                  "ad_by",
-                                  values.ad_by === "Builder" ? "" : "Builder"
-                                );
-                              }}
-                            >
-                              <View className="flex-row mt-4 items-center">
-                                <MaterialIcons
-                                  size={25}
-                                  color={Colors.light.DarkGreen}
-                                  name={
-                                    values.ad_by === "Builder"
-                                      ? "check-box"
-                                      : "check-box-outline-blank"
-                                  }
-                                />
-                                <Text
-                                  style={{
-                                    marginLeft: hs(5),
-                                    fontWeight: "500",
-                                    fontFamily: "PopinRegula",
-                                  }}
-                                >
-                                  Builder
-                                </Text>
-                              </View>
-                            </TouchableOpacity>
-                          )}
-                          {(data?.profiles_exist?.decor?.exists && data?.profiles_exist?.decor?.status==="Active") && (
-                            <TouchableOpacity
-                             activeOpacity={1}
-                              onPress={() => {
-                                setFieldValue(
-                                  "ad_by",
-                                  values.ad_by === "Decor" ? "" : "Decor"
-                                );
-                              }}
-                            >
-                              <View className="flex-row mt-4 items-center">
-                                <MaterialIcons
-                                  size={25}
-                                  color={Colors.light.DarkGreen}
-                                  name={
-                                    values.ad_by === "Decor"
-                                      ? "check-box"
-                                      : "check-box-outline-blank"
-                                  }
-                                />
-                                <Text
-                                  style={{
-                                    marginLeft: hs(5),
-                                    fontWeight: "500",
-                                    fontFamily: "PopinRegula",
-                                  }}
-                                >
-                                  Decor
-                                </Text>
-                              </View>
-                            </TouchableOpacity>
-                          )}
-                          {(data?.profiles_exist?.electrician?.exists && data?.profiles_exist?.electrician?.status==="Active") && (
-                            <TouchableOpacity
-                             activeOpacity={1}
-                              onPress={() => {
-                                setFieldValue(
-                                  "ad_by",
-                                  values.ad_by === "Electrician"
-                                    ? ""
-                                    : "Electrician"
-                                );
-                              }}
-                            >
-                              <View className="flex-row mt-4 items-center">
-                                <MaterialIcons
-                                  size={25}
-                                  color={Colors.light.DarkGreen}
-                                  name={
+                          {data?.profiles_exist?.agent?.exists &&
+                            data?.profiles_exist?.agent?.status ===
+                              "Active" && (
+                              <TouchableOpacity
+                                activeOpacity={1}
+                                onPress={() => {
+                                  setFieldValue(
+                                    "ad_by",
+                                    values.ad_by === "Agent" ? "" : "Agent"
+                                  );
+                                }}
+                              >
+                                <View className="flex-row mt-4 items-center">
+                                  <MaterialIcons
+                                    size={25}
+                                    color={Colors.light.DarkGreen}
+                                    name={
+                                      values.ad_by === "Agent"
+                                        ? "check-box"
+                                        : "check-box-outline-blank"
+                                    }
+                                  />
+                                  <Text
+                                    style={{
+                                      marginLeft: hs(5),
+                                      fontWeight: "500",
+                                      fontFamily: "PopinRegula",
+                                    }}
+                                  >
+                                    Agent
+                                  </Text>
+                                </View>
+                              </TouchableOpacity>
+                            )}
+                          {data?.profiles_exist?.builder?.exists &&
+                            data?.profiles_exist?.builder?.status ===
+                              "Active" && (
+                              <TouchableOpacity
+                                activeOpacity={1}
+                                onPress={() => {
+                                  setFieldValue(
+                                    "ad_by",
+                                    values.ad_by === "Builder" ? "" : "Builder"
+                                  );
+                                }}
+                              >
+                                <View className="flex-row mt-4 items-center">
+                                  <MaterialIcons
+                                    size={25}
+                                    color={Colors.light.DarkGreen}
+                                    name={
+                                      values.ad_by === "Builder"
+                                        ? "check-box"
+                                        : "check-box-outline-blank"
+                                    }
+                                  />
+                                  <Text
+                                    style={{
+                                      marginLeft: hs(5),
+                                      fontWeight: "500",
+                                      fontFamily: "PopinRegula",
+                                    }}
+                                  >
+                                    Builder
+                                  </Text>
+                                </View>
+                              </TouchableOpacity>
+                            )}
+                          {data?.profiles_exist?.decor?.exists &&
+                            data?.profiles_exist?.decor?.status ===
+                              "Active" && (
+                              <TouchableOpacity
+                                activeOpacity={1}
+                                onPress={() => {
+                                  setFieldValue(
+                                    "ad_by",
+                                    values.ad_by === "Decor" ? "" : "Decor"
+                                  );
+                                }}
+                              >
+                                <View className="flex-row mt-4 items-center">
+                                  <MaterialIcons
+                                    size={25}
+                                    color={Colors.light.DarkGreen}
+                                    name={
+                                      values.ad_by === "Decor"
+                                        ? "check-box"
+                                        : "check-box-outline-blank"
+                                    }
+                                  />
+                                  <Text
+                                    style={{
+                                      marginLeft: hs(5),
+                                      fontWeight: "500",
+                                      fontFamily: "PopinRegula",
+                                    }}
+                                  >
+                                    Decor
+                                  </Text>
+                                </View>
+                              </TouchableOpacity>
+                            )}
+                          {data?.profiles_exist?.electrician?.exists &&
+                            data?.profiles_exist?.electrician?.status ===
+                              "Active" && (
+                              <TouchableOpacity
+                                activeOpacity={1}
+                                onPress={() => {
+                                  setFieldValue(
+                                    "ad_by",
                                     values.ad_by === "Electrician"
-                                      ? "check-box"
-                                      : "check-box-outline-blank"
-                                  }
-                                />
-                                <Text
-                                  style={{
-                                    marginLeft: hs(5),
-                                    fontWeight: "500",
-                                    fontFamily: "PopinRegula",
-                                  }}
-                                >
-                                  Electrician
-                                </Text>
-                              </View>
-                            </TouchableOpacity>
-                          )}
-                          {(data?.profiles_exist?.investor?.exists && data?.profiles_exist?.investor?.status==="Active") && (
-                            <TouchableOpacity
-                             activeOpacity={1}
-                              onPress={() => {
-                                setFieldValue(
-                                  "ad_by",
-                                  values.ad_by === "Investor" ? "" : "Investor"
-                                );
-                              }}
-                            >
-                              <View className="flex-row mt-4 items-center">
-                                <MaterialIcons
-                                  size={25}
-                                  color={Colors.light.DarkGreen}
-                                  name={
+                                      ? ""
+                                      : "Electrician"
+                                  );
+                                }}
+                              >
+                                <View className="flex-row mt-4 items-center">
+                                  <MaterialIcons
+                                    size={25}
+                                    color={Colors.light.DarkGreen}
+                                    name={
+                                      values.ad_by === "Electrician"
+                                        ? "check-box"
+                                        : "check-box-outline-blank"
+                                    }
+                                  />
+                                  <Text
+                                    style={{
+                                      marginLeft: hs(5),
+                                      fontWeight: "500",
+                                      fontFamily: "PopinRegula",
+                                    }}
+                                  >
+                                    Electrician
+                                  </Text>
+                                </View>
+                              </TouchableOpacity>
+                            )}
+                          {data?.profiles_exist?.investor?.exists &&
+                            data?.profiles_exist?.investor?.status ===
+                              "Active" && (
+                              <TouchableOpacity
+                                activeOpacity={1}
+                                onPress={() => {
+                                  setFieldValue(
+                                    "ad_by",
                                     values.ad_by === "Investor"
-                                      ? "check-box"
-                                      : "check-box-outline-blank"
-                                  }
-                                />
-                                <Text
-                                  style={{
-                                    marginLeft: hs(5),
-                                    fontWeight: "500",
-                                    fontFamily: "PopinRegula",
-                                  }}
-                                >
-                                  Investor
-                                </Text>
-                              </View>
-                            </TouchableOpacity>
-                          )}
-                          {(data?.profiles_exist?.mortgage?.exists && data?.profiles_exist?.mortgage?.status==="Active") && (
-                            <TouchableOpacity
-                             activeOpacity={1}
-                              onPress={() => {
-                                setFieldValue(
-                                  "ad_by",
-                                  values.ad_by === "Mortgage" ? "" : "Mortgage"
-                                );
-                              }}
-                            >
-                              <View className="flex-row mt-4 items-center">
-                                <MaterialIcons
-                                  size={25}
-                                  color={Colors.light.DarkGreen}
-                                  name={
+                                      ? ""
+                                      : "Investor"
+                                  );
+                                }}
+                              >
+                                <View className="flex-row mt-4 items-center">
+                                  <MaterialIcons
+                                    size={25}
+                                    color={Colors.light.DarkGreen}
+                                    name={
+                                      values.ad_by === "Investor"
+                                        ? "check-box"
+                                        : "check-box-outline-blank"
+                                    }
+                                  />
+                                  <Text
+                                    style={{
+                                      marginLeft: hs(5),
+                                      fontWeight: "500",
+                                      fontFamily: "PopinRegula",
+                                    }}
+                                  >
+                                    Investor
+                                  </Text>
+                                </View>
+                              </TouchableOpacity>
+                            )}
+                          {data?.profiles_exist?.mortgage?.exists &&
+                            data?.profiles_exist?.mortgage?.status ===
+                              "Active" && (
+                              <TouchableOpacity
+                                activeOpacity={1}
+                                onPress={() => {
+                                  setFieldValue(
+                                    "ad_by",
                                     values.ad_by === "Mortgage"
-                                      ? "check-box"
-                                      : "check-box-outline-blank"
-                                  }
-                                />
-                                <Text
-                                  style={{
-                                    marginLeft: hs(5),
-                                    fontWeight: "500",
-                                    fontFamily: "PopinRegula",
-                                  }}
-                                >
-                                  Mortgage
-                                </Text>
-                              </View>
-                            </TouchableOpacity>
-                          )}
-                          {(data?.profiles_exist?.painter?.exists && data?.profiles_exist?.painter?.status==="Active") && (
-                            <TouchableOpacity
-                             activeOpacity={1}
-                              onPress={() => {
-                                setFieldValue(
-                                  "ad_by",
-                                  values.ad_by === "Painter" ? "" : "Painter"
-                                );
-                              }}
-                            >
-                              <View className="flex-row mt-4 items-center">
-                                <MaterialIcons
-                                  size={25}
-                                  color={Colors.light.DarkGreen}
-                                  name={
-                                    values.ad_by === "Painter"
-                                      ? "check-box"
-                                      : "check-box-outline-blank"
-                                  }
-                                />
-                                <Text
-                                  style={{
-                                    marginLeft: hs(5),
-                                    fontWeight: "500",
-                                    fontFamily: "PopinRegula",
-                                  }}
-                                >
-                                  Painter
-                                </Text>
-                              </View>
-                            </TouchableOpacity>
-                          )}
-                          {(data?.profiles_exist?.plumber?.exists && data?.profiles_exist?.plumber?.status==="Active") && (
-                            <TouchableOpacity
-                             activeOpacity={1}
-                              onPress={() => {
-                                setFieldValue(
-                                  "ad_by",
-                                  values.ad_by === "Plumber" ? "" : "Plumber"
-                                );
-                              }}
-                            >
-                              <View className="flex-row mt-4 items-center">
-                                <MaterialIcons
-                                  size={25}
-                                  color={Colors.light.DarkGreen}
-                                  name={
-                                    values.ad_by === "Plumber"
-                                      ? "check-box"
-                                      : "check-box-outline-blank"
-                                  }
-                                />
-                                <Text
-                                  style={{
-                                    marginLeft: hs(5),
-                                    fontWeight: "500",
-                                    fontFamily: "PopinRegula",
-                                  }}
-                                >
-                                  Plumber
-                                </Text>
-                              </View>
-                            </TouchableOpacity>
-                          )}
+                                      ? ""
+                                      : "Mortgage"
+                                  );
+                                }}
+                              >
+                                <View className="flex-row mt-4 items-center">
+                                  <MaterialIcons
+                                    size={25}
+                                    color={Colors.light.DarkGreen}
+                                    name={
+                                      values.ad_by === "Mortgage"
+                                        ? "check-box"
+                                        : "check-box-outline-blank"
+                                    }
+                                  />
+                                  <Text
+                                    style={{
+                                      marginLeft: hs(5),
+                                      fontWeight: "500",
+                                      fontFamily: "PopinRegula",
+                                    }}
+                                  >
+                                    Mortgage
+                                  </Text>
+                                </View>
+                              </TouchableOpacity>
+                            )}
+                          {data?.profiles_exist?.painter?.exists &&
+                            data?.profiles_exist?.painter?.status ===
+                              "Active" && (
+                              <TouchableOpacity
+                                activeOpacity={1}
+                                onPress={() => {
+                                  setFieldValue(
+                                    "ad_by",
+                                    values.ad_by === "Painter" ? "" : "Painter"
+                                  );
+                                }}
+                              >
+                                <View className="flex-row mt-4 items-center">
+                                  <MaterialIcons
+                                    size={25}
+                                    color={Colors.light.DarkGreen}
+                                    name={
+                                      values.ad_by === "Painter"
+                                        ? "check-box"
+                                        : "check-box-outline-blank"
+                                    }
+                                  />
+                                  <Text
+                                    style={{
+                                      marginLeft: hs(5),
+                                      fontWeight: "500",
+                                      fontFamily: "PopinRegula",
+                                    }}
+                                  >
+                                    Painter
+                                  </Text>
+                                </View>
+                              </TouchableOpacity>
+                            )}
+                          {data?.profiles_exist?.plumber?.exists &&
+                            data?.profiles_exist?.plumber?.status ===
+                              "Active" && (
+                              <TouchableOpacity
+                                activeOpacity={1}
+                                onPress={() => {
+                                  setFieldValue(
+                                    "ad_by",
+                                    values.ad_by === "Plumber" ? "" : "Plumber"
+                                  );
+                                }}
+                              >
+                                <View className="flex-row mt-4 items-center">
+                                  <MaterialIcons
+                                    size={25}
+                                    color={Colors.light.DarkGreen}
+                                    name={
+                                      values.ad_by === "Plumber"
+                                        ? "check-box"
+                                        : "check-box-outline-blank"
+                                    }
+                                  />
+                                  <Text
+                                    style={{
+                                      marginLeft: hs(5),
+                                      fontWeight: "500",
+                                      fontFamily: "PopinRegula",
+                                    }}
+                                  >
+                                    Plumber
+                                  </Text>
+                                </View>
+                              </TouchableOpacity>
+                            )}
+                          {data?.profiles_exist?.material_supplier?.exists &&
+                            data?.profiles_exist?.material_supplier?.status ===
+                              "Active" && (
+                              <TouchableOpacity
+                                activeOpacity={1}
+                                onPress={() => {
+                                  setFieldValue(
+                                    "ad_by",
+                                    values.ad_by === "Material_supplier"
+                                      ? ""
+                                      : "Material_supplier"
+                                  );
+                                }}
+                              >
+                                <View className="flex-row mt-4 items-center">
+                                  <MaterialIcons
+                                    size={25}
+                                    color={Colors.light.DarkGreen}
+                                    name={
+                                      values.ad_by === "Material_supplier"
+                                        ? "check-box"
+                                        : "check-box-outline-blank"
+                                    }
+                                  />
+                                  <Text
+                                    style={{
+                                      marginLeft: hs(5),
+                                      fontWeight: "500",
+                                      fontFamily: "PopinRegula",
+                                    }}
+                                  >
+                                    Material Supplier
+                                  </Text>
+                                </View>
+                              </TouchableOpacity>
+                            )}
                           {touched && errors && (
                             <Text
                               style={{
@@ -1685,78 +2105,79 @@ setpropertType( post.property_type)
                       }
                       Componet2={
                         <View className="flex-1">
-                       <FlashList
-  data={advertisePrices?.data ?? []}
-  keyExtractor={(item) => item.id.toString()}
-  extraData={values.time_period}
-  ListHeaderComponent={
-    <View
-      className="flex-row justify-between items-center"
-      style={{
-        borderBottomWidth: 1,
-        borderColor: Colors.light.textGray,
-        borderRadius: ms(5),
-        paddingHorizontal: hs(10),
-        paddingVertical: vs(10),
-      }}
-    >
-      <Text style={{ fontFamily: "PopinRegula" }}>
-        Advertise Time
-      </Text>
+                          <FlashList
+                            data={advertisePrices?.data ?? []}
+                            keyExtractor={(item) => item.id.toString()}
+                            extraData={values.time_period}
+                            ListHeaderComponent={
+                              <View
+                                className="flex-row justify-between items-center"
+                                style={{
+                                  borderBottomWidth: 1,
+                                  borderColor: Colors.light.textGray,
+                                  borderRadius: ms(5),
+                                  paddingHorizontal: hs(10),
+                                  paddingVertical: vs(10),
+                                }}
+                              >
+                                <Text style={{ fontFamily: "PopinRegula" }}>
+                                  Advertise Time
+                                </Text>
 
-      <Text style={{ fontFamily: "PopinRegula" }}>
-        Price
-      </Text>
-    </View>
-  }
-  renderItem={({ item }) => (
-    <View
-      className="flex-row justify-between items-center"
-      style={{
-        paddingHorizontal: hs(10),
-        paddingVertical: vs(10),
-      }}
-    >
-      <View className="flex-row items-center">
-        <TouchableOpacity
-         activeOpacity={1}
-          onPress={() => {
-            const life = item?.life?.toString();
+                                <Text style={{ fontFamily: "PopinRegula" }}>
+                                  Price
+                                </Text>
+                              </View>
+                            }
+                            renderItem={({ item }) => (
+                              <View
+                                className="flex-row justify-between items-center"
+                                style={{
+                                  paddingHorizontal: hs(10),
+                                  paddingVertical: vs(10),
+                                }}
+                              >
+                                <View className="flex-row items-center">
+                                  <TouchableOpacity
+                                    activeOpacity={1}
+                                    onPress={() => {
+                                      const life = item?.life?.toString();
 
-            setFieldValue("time_period", life);
+                                      setFieldValue("time_period", life);
 
-            setSelectedAmount(
-              item?.price?.toString()
-            );
-          }}
-        >
-          <MaterialIcons
-            size={25}
-            color={Colors.light.DarkGreen}
-            name={
-              values.time_period === item.life.toString()
-                ? "radio-button-checked"
-                : "radio-button-unchecked"
-            }
-          />
-        </TouchableOpacity>
+                                      setSelectedAmount(
+                                        item?.price?.toString()
+                                      );
+                                    }}
+                                  >
+                                    <MaterialIcons
+                                      size={25}
+                                      color={Colors.light.DarkGreen}
+                                      name={
+                                        values.time_period ===
+                                        item.life.toString()
+                                          ? "radio-button-checked"
+                                          : "radio-button-unchecked"
+                                      }
+                                    />
+                                  </TouchableOpacity>
 
-        <Text
-          style={{
-            marginLeft: hs(10),
-            fontFamily: "PopinRegula",
-          }}
-        >
-          For {item.life.toString()} Days
-        </Text>
-      </View>
+                                  <Text
+                                    style={{
+                                      marginLeft: hs(10),
+                                      fontFamily: "PopinRegula",
+                                    }}
+                                  >
+                                    For {item.life.toString()} Days
+                                  </Text>
+                                </View>
 
-      <Text style={{ fontFamily: "PopinRegula" }}>
-        £{formatPrice(item.price.toString())}
-      </Text>
-    </View>
-  )}
-/>
+                                <Text style={{ fontFamily: "PopinRegula" }}>
+                                  PKR{formatPrice(item.price.toString())}
+                                </Text>
+                              </View>
+                            )}
+                          />
 
                           <View
                             style={{
@@ -1827,72 +2248,168 @@ setpropertType( post.property_type)
                               <Text style={styles.title}>
                                 Pay and Ad post Atomaticlly
                               </Text>
+<TouchableOpacity
+  activeOpacity={0.85}
+  className="mb-4"
+  style={styles.paypalMainButton}
+  onPress={async () => {
+    const errors = await validateForm();
 
-                              <TouchableOpacity
-                               activeOpacity={1}
-                                className="mb-4"
-                                style={styles.paypalMainButton}
-                                onPress={async () => {
-                                  const errors = await validateForm();
+    const touchedFields = Object.keys(
+      initialValues
+    ).reduce((acc, key) => {
+      acc[key] = true;
+      return acc;
+    }, {} as any);
 
-                                  const touchedFields = Object.keys(
-                                    initialValues
-                                  ).reduce((acc, key) => {
-                                    acc[key] = true;
-                                    return acc;
-                                  }, {} as any);
+    setTouched(touchedFields);
 
-                                  setTouched(touchedFields);
+    if (Object.keys(errors).length > 0) {
+      console.log("Validation errors:", errors);
 
-                                  if (Object.keys(errors).length > 0) {
-                                    console.log(errors);
-                                    renderToastError(
-                                      "Please fill all required fields"
-                                    );
-                                    return;
-                                  }
+      renderToastError(
+        "Please fill all required fields"
+      );
 
-                                  if (!selectedAmount) {
-                                    renderToastError(
-                                      "Please select bundle first"
-                                    );
-                                    return;
-                                  }
+      return;
+    }
 
-                                  setvisible(true);
-                                }}
-                              >
-                                <View style={styles.paypalContent}>
-                                  <Paypal />
+    if (!selectedAmount) {
+      renderToastError(
+        "Please select bundle first"
+      );
 
-                                  <Text style={styles.paypalText}>
-                                    Pay with PayPal or Debit/Credit Card
-                                  </Text>
-                                </View>
-                              </TouchableOpacity>
+      return;
+    }
+
+    await setFieldValue(
+      "payment_method",
+      "Bank Alfalah",
+      false
+    );
+
+    await setFieldValue(
+      "amount",
+      selectedAmount,
+      false
+    );
+
+    await setFieldValue(
+      "order_id",
+      "",
+      false
+    );
+
+    setvisible(true);
+  }}
+>
+  <View style={styles.paypalContent}>
+    <View style={styles.alfalahHeader}>
+      <MaterialIcons
+        name="account-balance-wallet"
+        size={27}
+        color="#FFFFFF"
+      />
+
+      <View style={{ flex: 1 }}>
+        <Text style={styles.paypalText}>
+          Pay via Bank Alfalah
+        </Text>
+
+        <Text style={styles.alfalahSubtitle}>
+          Cards, Wallet & QR Payments
+        </Text>
+      </View>
+
+      <MaterialIcons
+        name="arrow-forward-ios"
+        size={17}
+        color="#FFFFFF"
+      />
+    </View>
+
+    <View style={styles.alfalahDivider} />
+
+    <View style={styles.alfalahMethods}>
+      <View style={styles.alfalahMethod}>
+        <MaterialIcons
+          name="credit-card"
+          size={22}
+          color="#FFFFFF"
+        />
+        <Text style={styles.alfalahMethodText}>
+          Debit / Credit Card
+        </Text>
+      </View>
+
+      <View style={styles.alfalahMethod}>
+        <MaterialIcons
+          name="account-balance-wallet"
+          size={22}
+          color="#FFFFFF"
+        />
+        <Text style={styles.alfalahMethodText}>
+          JazzCash Wallet
+        </Text>
+      </View>
+
+      <View style={styles.alfalahMethod}>
+        <MaterialIcons
+          name="qr-code-2"
+          size={22}
+          color="#FFFFFF"
+        />
+        <Text style={styles.alfalahMethodText}>
+          QR Code
+        </Text>
+      </View>
+    </View>
+  </View>
+</TouchableOpacity>
                               <LargeButton
-                                handleSubmit={() => {
-                                  if (
-                                    !selectedAmount &&
-                                    selectedAmount === ""
-                                  ) {
-                                    renderToastError(
-                                      "Please select bundle first"
-                                    );
-                                    return;
-                                  }
-                                  if (amount.amount >= Number(selectedAmount)) {
-                                    setFieldValue("payment_method", "Wallet");
-                                    setFieldValue("amount", selectedAmount);
-                                    handleSubmit();
-                                  } else {
-                                    renderToastError(
-                                      "You dont have enought amount in wallet plz recharge"
-                                    );
-                                  }
-                                }}
-                                text="Pay with wallet"
-                              />
+  handleSubmit={async () => {
+    if (!selectedAmount) {
+      renderToastError(
+        "Please select bundle first"
+      );
+
+      return;
+    }
+
+    const walletAmount =
+      Number(amount?.amount ?? 0);
+
+    if (
+      walletAmount >=
+      Number(selectedAmount)
+    ) {
+      await setFieldValue(
+        "payment_method",
+        "Wallet",
+        false
+      );
+
+      await setFieldValue(
+        "amount",
+        selectedAmount,
+        false
+      );
+
+      await setFieldValue(
+        "order_id",
+        "",
+        false
+      );
+
+      handleSubmit();
+    } else {
+      renderToastError(
+        "You don't have enough amount in wallet. Please recharge."
+      );
+    }
+  }}
+  text="Pay with wallet"
+/>
                             </View>
                           </View>
                         </View>
@@ -1905,22 +2422,134 @@ setpropertType( post.property_type)
                   )}
 
                   <View className="my-4"></View>
-                  <PapPalPayment
-                    amount={selectedAmount}
-                    onPress={(order_id, setApproveUrl) => {
-                      try {
-                        setFieldValue("payment_method", "Paypal");
-                        setFieldValue("order_id", order_id);
-                        handleSubmit();
-                        setApproveUrl(null);
-                      } catch {
-                        renderToastError("Some thing went rong");
-                      }
-                    }}
-                    setVisible={setvisible}
-                    visible={visible}
-                  />
-                </>
+<AlfalahPayment
+  visible={visible}
+  amount={selectedAmount}
+  setVisible={setvisible}
+
+  onPress={async (
+    orderId,
+    setApproveUrl
+  ) => {
+    try {
+      console.log(
+        "Bank payment page success:",
+        orderId
+      );
+
+      /**
+       * ==========================================
+       * STEP 1
+       * VERIFY WITH BANK BEFORE POSTING PROPERTY
+       * ==========================================
+       */
+      const verification =
+        await verifyAlfalahPayment({
+          order_id:
+            String(orderId),
+        }).unwrap();
+
+      console.log(
+        "Bank Alfalah verification:",
+        verification
+      );
+
+      if (
+        !verification?.success
+      ) {
+        renderToastError(
+          verification?.message ||
+          "Unable to verify payment."
+        );
+
+        return;
+      }
+
+      /**
+       * Extra safety.
+       */
+      if (
+        String(
+          verification.status
+        ).toUpperCase()
+        !== "PAID"
+      ) {
+        renderToastError(
+          "Bank payment is not marked as paid."
+        );
+
+        return;
+      }
+
+      console.log(
+        "PAYMENT VERIFIED BEFORE PROPERTY POST"
+      );
+
+      /**
+       * ==========================================
+       * STEP 2
+       * SAVE PAYMENT DATA IN FORMIK
+       * ==========================================
+       */
+      await setFieldValue(
+        "order_id",
+        String(orderId),
+        false
+      );
+
+      await setFieldValue(
+        "payment_method",
+        "Bank Alfalah",
+        false
+      );
+
+      await setFieldValue(
+        "amount",
+        selectedAmount,
+        false
+      );
+
+      /**
+       * ==========================================
+       * STEP 3
+       * CLOSE BANK WEBVIEW
+       * ==========================================
+       */
+      setApproveUrl(null);
+
+      setvisible(false);
+
+      /**
+       * ==========================================
+       * STEP 4
+       * NOW PROPERTY CAN BE POSTED
+       * ==========================================
+       */
+      setTimeout(() => {
+        handleSubmit();
+      }, 200);
+
+    } catch (error: any) {
+
+      console.log(
+        "Bank Alfalah verification error:",
+        error
+      );
+
+      console.log(
+        "Verification response:",
+        error?.data
+      );
+
+      renderToastError(
+        error?.data?.message ||
+        "Payment could not be verified. Property was not posted."
+      );
+
+     
+    }
+  }}
+/>    </>
               )}
             </Formik>
           </View>
@@ -1936,6 +2565,66 @@ setpropertType( post.property_type)
 export default index;
 
 const styles = StyleSheet.create({
+  paypalMainButton: {
+  backgroundColor: "#c21c1c",
+  borderRadius: 14,
+  paddingVertical: 16,
+  paddingHorizontal: 15,
+  elevation: 3,
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 3 },
+  shadowOpacity: 0.15,
+  shadowRadius: 5,
+},
+
+paypalContent: {
+  flexDirection: "column",
+},
+
+alfalahHeader: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 12,
+},
+
+paypalText: {
+  color: "#FFFFFF",
+  fontSize: 16,
+  fontWeight: "700",
+},
+
+alfalahSubtitle: {
+  color: "#D8EDE4",
+  fontSize: 12,
+  marginTop: 4,
+},
+
+alfalahDivider: {
+  height: 1,
+  backgroundColor: "rgba(255,255,255,0.25)",
+  marginVertical: 14,
+},
+
+alfalahMethods: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 8,
+},
+
+alfalahMethod: {
+  flex: 1,
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+},
+
+alfalahMethodText: {
+  color: "#FFFFFF",
+  fontSize: 10,
+  fontWeight: "600",
+  textAlign: "center",
+},
   card: {
     marginVertical: vs(20),
     backgroundColor: "white",
@@ -1974,24 +2663,5 @@ const styles = StyleSheet.create({
     marginLeft: hs(8),
   },
 
-  paypalMainButton: {
-    backgroundColor: Colors.light.Yellow,
-    borderRadius: ms(8),
-    height: vs(48),
-    justifyContent: "center",
-    alignItems: "center",
-  },
 
-  paypalContent: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  paypalText: {
-    marginLeft: hs(10),
-    fontSize: ms(14),
-    fontWeight: "600",
-    color: "#003087",
-    fontFamily: "PopinRegula",
-  },
 });

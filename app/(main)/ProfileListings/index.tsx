@@ -29,7 +29,6 @@ const index = () => {
   const [zip, setZip] = useState(params.zip || "");
   const [showFilter, setShowFilter] = useState(false);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
- 
 const [showSaved, setShowSaved] = useState(false);
  
     const FilterSchema = Yup.object().shape({
@@ -37,41 +36,53 @@ const [showSaved, setShowSaved] = useState(false);
      
     });
      const [filterValues, setFilterValues] = useState({
-        radius: params.radius || "",
-      });
+  radius: params.radius || "",
+  material: params.material_type || "All Suppliers",
+  services: params.services_type || "All Service Providers",
+  sub_type: params.sub_type || "",
+});
     
-      const [apiFilters, setApiFilters] = useState({
-        page,
-        address,
-        city,
-        state,
-        zip,
-        lat,
-        lng,
-        name,
-        user_id: user?.id,
-        type:params.type,
-        radius: params.radius || undefined,
-        per_page: 10,
-      });
+     const [apiFilters, setApiFilters] = useState({
+  page,
+  address,
+  city,
+  state,
+  zip,
+  lat,
+  lng,
+  name,
+  user_id: user?.id,
+  type: params.type,
+  radius: params.radius || undefined,
+  per_page: 10,
+  material: params.material_type,
+  services:params.services_type,
+  sub_type: params.sub_type,
+});
  const { data: profileList, isLoading, isFetching } =
   useGetProfileListingQuery(apiFilters);
 
-   const mapToApiFilters = (values: any) => ({
-    page,
-    address,
-    city,
-    state,
-    zip,
-    lat,
-    lng,
-    name,
-    user_id: user?.id,
-    type:params.type,
-    radius: values.radius || undefined,
-     per_page: 10,
-  });
-  useEffect(() => {
+ const mapToApiFilters = (values: any) => ({
+  page: 1,
+  address,
+  city,
+  state,
+  zip,
+  lat,
+  lng,
+  name,
+  user_id: user?.id,
+  type: params.type,
+  radius: values.radius || undefined,
+  per_page: 10,
+
+  material: values.material,
+
+  services: values.services,
+
+  sub_type: values.sub_type || params.sub_type,
+});
+useEffect(() => {
   setApiFilters((prev) => ({
     ...prev,
     page,
@@ -83,9 +94,23 @@ const [showSaved, setShowSaved] = useState(false);
     lng,
     name,
     user_id: user?.id,
-     per_page: 10,
+    per_page: 10,
+    material: prev.material,
+    services: prev.services,
+    sub_type: prev.sub_type,
+    radius: prev.radius,
   }));
-}, [page, address, city, state, zip, lat, lng, name]);
+}, [
+  page,
+  address,
+  city,
+  state,
+  zip,
+  lat,
+  lng,
+  name,
+  user?.id,
+]);
 
   useEffect(() => {
     if (!profileList) return;
@@ -168,7 +193,11 @@ useFocusEffect(
                 validationSchema={FilterSchema}
                 onSubmit={(values) => {
                   setFilterValues(values);
-      
+       console.log("FORM VALUES:", values);
+
+  const filters = mapToApiFilters(values);
+
+  console.log("API FILTERS:", filters);
                   setpage(1);
                   setApiFilters(mapToApiFilters(values));
                   setShowFilter(false);

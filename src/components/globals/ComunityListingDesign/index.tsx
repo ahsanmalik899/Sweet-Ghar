@@ -132,7 +132,7 @@ const CommunityListItem = ({
                   fontFamily: "PopinRegula",
                 }}
               >
-               From £ {formatPrice(item?.data?.price1)}
+               From PKR {formatPrice(item?.data?.price1)}
               
               </Text>
               {item?.data?.post_type === "Trending" && (

@@ -1,4 +1,5 @@
 import {
+  useCaptureAlfalahPaymentMutation,
   useDeletePastWorkMutation,
   useDeleteProfileMutation,
   useGetAdvatizementPriceQuery,
@@ -11,6 +12,7 @@ import {
   useShare_profileApiMutation,
   useUpgradeProfileApiMutation,
   useUserAgentPastPostsApiQuery,
+  useVerifyAlfalahPaymentMutation,
 } from "@/store/api/user/MainApi";
 import { userdata } from "@/store/slices/selector/user";
 import Call from "@assets/Buy/call.svg";
@@ -19,14 +21,13 @@ import Delete from "@assets/icons/MypostListing/delet.svg";
 import Edit from "@assets/icons/MypostListing/edit.svg";
 import Share from "@assets/icons/share.svg";
 import NoImage from "@assets/SideBar/no_images.png";
-import Paypal from "@assets/SideBar/paypal-icon.svg";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { FontAwesome, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { FlashList } from "@shopify/flash-list";
 import { FormikInput } from "@src/components/globals/FormictInput";
 import HeaderWithBack from "@src/components/globals/HeaderWithBack";
 import LargeButton from "@src/components/globals/LaregeButton";
 import Loading from "@src/components/globals/Loading";
-import PapPalPayment from "@src/components/globals/PapPalPayment";
+import AlfalahPayment from "@src/components/globals/PapPalPayment";
 import PastDealsagent from "@src/components/globals/PastDealsagent";
 import PostPastWork from "@src/components/globals/PostPastWork";
 import PromotionPricingCard from "@src/components/globals/PromotionPricingCard";
@@ -36,6 +37,7 @@ import { renderToastError, renderToastSuccess } from "@src/hooks/useToasty";
 import { hs, ms, vs } from "@utils/design/design";
 import { ImageFormater } from "@utils/ImageFormat";
 import * as Clipboard from "expo-clipboard";
+import { File, Paths } from "expo-file-system";
 import { router, useLocalSearchParams } from "expo-router";
 import { Formik } from "formik";
 import { useEffect, useState } from "react";
@@ -44,6 +46,7 @@ import {
   Alert,
   Image,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -52,6 +55,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import RNShare from "react-native-share";
 import * as Yup from "yup";
 
 const Index = () => {
@@ -61,6 +65,12 @@ const Index = () => {
     useUpgradeProfileApiMutation();
   const [promoteProfile, { isLoading: promoteLoading }] =
     usePromoteProfileMutation();
+
+  const [verifyAlfalahPayment, { isLoading: isVerifyingAlfalah }] =
+    useVerifyAlfalahPaymentMutation();
+
+  const [capturePayment, { isLoading: isCapturing }] =
+    useCaptureAlfalahPaymentMutation();
   const [page, setPage] = useState(1);
   const [perPage] = useState(10);
   const [showShare, setShowShare] = useState(false);
@@ -161,41 +171,295 @@ const Index = () => {
       ]
     );
   };
-  const handelSubmit = async (method) => {
-    if (isPromotion) {
-      console.log("promotion", timePeriod, SelectedAmount);
-      try {
-        const response = await promoteProfile({
-          profile_id: profile?.id,
+  const handelSubmit = async (
+    method: "Wallet" | "Bank Alfalah",
+    bankOrderId?: string
+  ) => {
+    try {
+      if (!SelectedAmount) {
+        renderToastError("Please select bundle first");
+        return;
+      }
+
+      if (!profile?.id) {
+        renderToastError("Profile not found");
+        return;
+      }
+
+      /**
+       * --------------------------------------------------
+       * BANK ALFALAH CAPTURE / FINAL VERIFICATION
+       * --------------------------------------------------
+       *
+       * The WebView callback already verified that the
+       * Bank Alfalah order status is PAID.
+       *
+       * Because this profile already exists and we already
+       * have profile.id, capture the payment BEFORE changing
+       * the profile. This prevents upgrade/promotion when
+       * the backend capture/verification fails.
+       */
+      if (method === "Bank Alfalah") {
+        if (!bankOrderId) {
+          renderToastError("Bank Alfalah Order ID is missing.");
+          return;
+        }
+
+        console.log("Capturing Bank Alfalah profile payment...");
+        console.log("Order:", bankOrderId);
+        console.log("Profile ID:", profile.id);
+
+        const captureResult = await capturePayment({
+          order_id: String(bankOrderId),
+          user_id: user.id,
+          upgrade_type: "Profile",
+          profile_type: Profiletype || "",
+          upgrade_id: profile.id,
+          upgrade_amount: SelectedAmount || 0,
+        }).unwrap();
+
+        console.log(
+          "Bank Alfalah profile capture result:",
+          captureResult
+        );
+
+        if (!captureResult?.success) {
+          renderToastError(
+            captureResult?.message ||
+              "Unable to verify Bank Alfalah payment."
+          );
+          return;
+        }
+
+        setPaymentMethod("Bank Alfalah");
+        setOrderid(String(bankOrderId));
+      } else {
+        setPaymentMethod("Wallet");
+        setOrderid("");
+      }
+
+      /**
+       * --------------------------------------------------
+       * Upgrade / Promote Profile
+       * --------------------------------------------------
+       *
+       * Wallet:
+       *   Runs directly after wallet balance validation.
+       *
+       * Bank Alfalah:
+       *   Runs only after BOTH bank verification and
+       *   backend capture succeed.
+       */
+      let response: any;
+
+      if (isPromotion) {
+        console.log("promotion", timePeriod, SelectedAmount);
+
+        response = await promoteProfile({
+          profile_id: profile.id,
           profileType: Profiletype,
           days: timePeriod,
           user_id: user.id,
           paymentMethod: method,
           amount: SelectedAmount,
         }).unwrap();
-        setShowoption(false);
-        renderToastSuccess(response?.message);
-      } catch (e) {
-        Alert.alert("Error", "Promotion failed");
-      }
-    } else {
-      try {
-        const response = await upgradeProfile({
-          profile_id: profile?.id,
+      } else {
+        response = await upgradeProfile({
+          profile_id: profile.id,
           profileType: Profiletype,
           days: timePeriod,
           user_id: user.id,
           paymentMethod: method,
           amount: SelectedAmount,
         }).unwrap();
-        setShowoption(false);
-        renderToastSuccess(response?.message);
-      } catch (e) {
-        Alert.alert("Error", "Upgrade failed");
       }
+
+      setShowoption(false);
+
+      renderToastSuccess(
+        response?.message ||
+          (isPromotion
+            ? "Profile promoted successfully."
+            : "Profile upgraded successfully.")
+      );
+    } catch (error: any) {
+      console.log("Profile/payment error:", error);
+      console.log("Error data:", error?.data);
+
+      renderToastError(
+        error?.data?.message ||
+          (isPromotion
+            ? "Promotion failed"
+            : "Upgrade failed")
+      );
     }
   };
   const profile = data?.data;
+  const downloadShareImage = async (
+  imageUrl: string,
+  profileId: string | number
+) => {
+  try {
+    if (!imageUrl) return null;
+
+    const lowerUrl = imageUrl.toLowerCase();
+
+    let extension = "jpg";
+
+    if (lowerUrl.includes(".png")) {
+      extension = "png";
+    } else if (lowerUrl.includes(".webp")) {
+      extension = "webp";
+    } else if (lowerUrl.includes(".jpeg")) {
+      extension = "jpeg";
+    }
+
+    const destination = new File(
+      Paths.cache,
+      `homeilove-profile-${profileId}-${Date.now()}.${extension}`
+    );
+
+    const downloadedFile = await File.downloadFileAsync(
+      imageUrl,
+      destination
+    );
+
+    return downloadedFile.uri;
+  } catch (error) {
+    console.log("Profile image download error:", error);
+    return null;
+  }
+};
+const shareOnSocial = async (
+  platform: "whatsapp" | "facebook" | "twitter" | "linkedin" | "more"
+) => {
+  try {
+    if (!id) {
+      renderToastError("Profile not found");
+      return;
+    }
+
+    const profileType = Profiletype?.toLowerCase();
+
+    const profileUrl =
+      `https://sweetghar.com/postRedirect?post_id=${id}&&type=profile&&profile_type=${profileType}`;
+
+    const profileTypeLabel =
+      profileType
+        ?.replace(/_/g, " ")
+        .replace(/\b\w/g, (char) => char.toUpperCase()) ||
+      "Professional";
+
+    const location = [
+      profile?.city,
+      profile?.state,
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    const shareText =
+      `Property ${profileTypeLabel}` +
+      `${profile?.business_name ? ` - ${profile.business_name}` : ""}` +
+      `${location ? ` in ${location}` : ""}`;
+
+    const message = `${shareText}\n${profileUrl}`;
+
+    const remoteImage =
+      profile?.cover
+        ? ImageFormater(profile.cover)
+        : profile?.logo
+        ? ImageFormater(profile.logo)
+        : null;
+
+    let localImage: string | null = null;
+
+    if (remoteImage) {
+      localImage = await downloadShareImage(
+        remoteImage,
+        id
+      );
+    }
+
+    const shareOptions: any = {
+      title: shareText,
+      message,
+      failOnCancel: false,
+
+      ...(Platform.OS === "android" && {
+        useInternalStorage: true,
+      }),
+
+      ...(localImage && {
+        url: localImage,
+        type: "image/*",
+      }),
+    };
+
+    // WhatsApp
+    if (platform === "whatsapp") {
+      await RNShare.shareSingle({
+        ...shareOptions,
+        social: RNShare.Social.WHATSAPP,
+      });
+
+      return;
+    }
+
+    // Facebook
+    if (platform === "facebook") {
+      await RNShare.shareSingle({
+        ...shareOptions,
+        social: RNShare.Social.FACEBOOK,
+      });
+
+      return;
+    }
+
+    // LinkedIn
+    if (platform === "linkedin") {
+      if (Platform.OS === "android") {
+        await RNShare.shareSingle({
+          ...shareOptions,
+          social: RNShare.Social.LINKEDIN,
+        });
+      } else {
+        await RNShare.open(shareOptions);
+      }
+
+      return;
+    }
+
+    // Twitter / X
+    if (platform === "twitter") {
+      if (Platform.OS === "ios") {
+        await RNShare.shareSingle({
+          ...shareOptions,
+          social: RNShare.Social.TWITTER,
+        });
+      } else {
+        await RNShare.open(shareOptions);
+      }
+
+      return;
+    }
+
+    // More
+    if (platform === "more") {
+      await RNShare.open({
+        ...shareOptions,
+        failOnCancel: false,
+      });
+
+      return;
+    }
+  } catch (error: any) {
+    console.log("Profile social share error:", error);
+
+    renderToastError(
+      error?.message || "Unable to share profile"
+    );
+  }
+};
   useEffect(() => {
     if (!pastData?.data) return;
 
@@ -247,7 +511,6 @@ const Index = () => {
         <View style={{ position: "relative" }}>
           <HeaderWithBack />
           <TouchableOpacity
-           activeOpacity={1}
             style={{
               position: "absolute",
               backgroundColor: "#bdbdbd71",
@@ -308,7 +571,6 @@ const Index = () => {
           <View className="flex-row justify-between">
             {profile?.post_type === "Normal" ? (
               <TouchableOpacity
-               activeOpacity={1}
                 style={{
                   backgroundColor: Colors.light.DarkGreen,
                   paddingHorizontal: hs(10),
@@ -328,7 +590,6 @@ const Index = () => {
               </TouchableOpacity>
             ) : profile?.post_type === "Trending" ? (
               <TouchableOpacity
-               activeOpacity={1}
                 style={{
                   backgroundColor: Colors.light.DarkGreen,
                   paddingHorizontal: hs(10),
@@ -351,13 +612,10 @@ const Index = () => {
               <></>
             )}
             <View style={styles.row}>
-              <TouchableOpacity 
-               activeOpacity={1}
-               onPress={handleDelete}>
+              <TouchableOpacity onPress={handleDelete}>
                 <Delete />
               </TouchableOpacity>
               <TouchableOpacity
-               activeOpacity={1}
                 onPress={() => {
                   router.navigate({
                     pathname: "/CreateProfiles",
@@ -381,7 +639,6 @@ const Index = () => {
           className="flex-row justify-between"
         >
           <TouchableOpacity
-           activeOpacity={1}
             style={{
               borderColor: Colors.light.DarkGreen,
               borderWidth: 2,
@@ -414,7 +671,6 @@ const Index = () => {
           </TouchableOpacity>
           {Profiletype !== "agent" && (
             <TouchableOpacity
-             activeOpacity={1}
               onPress={() => openPastWorkModal()}
               style={{
                 backgroundColor: Colors.light.DarkGreen,
@@ -505,7 +761,6 @@ const Index = () => {
 
             <View style={styles.row}>
               <TouchableOpacity
-               activeOpacity={1}
                 onPress={() => openPastWorkModal(item)}
                 style={styles.iconBtn}
               >
@@ -593,7 +848,6 @@ const Index = () => {
                 }}
               >
                 <TouchableOpacity
-                 activeOpacity={1}
                   style={{
                     position: "absolute",
                     top: hs(10),
@@ -649,7 +903,6 @@ const Index = () => {
     >
       <View className="flex-row items-center">
         <TouchableOpacity
-         activeOpacity={1}
           onPress={() => {
             setTimeperiod(valueitem.life);
             setSelectedAmount(valueitem.price);
@@ -677,7 +930,7 @@ const Index = () => {
       </View>
 
       <Text style={{ fontFamily: "PopinRegula" }}>
-        £{valueitem.price}
+        ${valueitem.price}
       </Text>
     </View>
   )}
@@ -748,34 +1001,95 @@ const Index = () => {
                 <View style={styles.card2}>
                   <Text style={styles.title}>Pay and Ad post Atomaticlly</Text>
 
-                  <TouchableOpacity
-                   activeOpacity={1}
-                    className="mb-4"
-                    style={styles.paypalMainButton}
-                    onPress={async () => {
-                      if (!SelectedAmount) {
-                        renderToastError("Please select bundle first");
-                        return;
-                      }
-                      setvisible(true);
-                    }}
-                  >
-                    <View style={styles.paypalContent}>
-                      <Paypal />
-                      <Text style={styles.paypalText}>
-                        Pay with PayPal or Debit/Credit Card
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
+             <TouchableOpacity
+  activeOpacity={0.85}
+  className="mb-4"
+  style={styles.paypalMainButton}
+  onPress={async () => {
+    if (!SelectedAmount) {
+      renderToastError("Please select bundle first");
+      return;
+    }
 
+    setPaymentMethod("Bank Alfalah");
+    setOrderid("");
+    setvisible(true);
+  }}
+>
+  <View style={styles.paypalContent}>
+    <View style={styles.alfalahHeader}>
+      <MaterialIcons
+        name="account-balance-wallet"
+        size={27}
+        color="#FFFFFF"
+      />
+
+      <View style={{ flex: 1 }}>
+        <Text style={styles.paypalText}>
+          Pay via Bank Alfalah
+        </Text>
+
+        <Text style={styles.alfalahSubtitle}>
+          Cards, Wallet & QR Payments
+        </Text>
+      </View>
+
+      <MaterialIcons
+        name="arrow-forward-ios"
+        size={17}
+        color="#FFFFFF"
+      />
+    </View>
+
+    <View style={styles.alfalahDivider} />
+
+    <View style={styles.alfalahMethods}>
+      <View style={styles.alfalahMethod}>
+        <MaterialIcons
+          name="credit-card"
+          size={22}
+          color="#FFFFFF"
+        />
+        <Text style={styles.alfalahMethodText}>
+          Debit / Credit Card
+        </Text>
+      </View>
+
+      <View style={styles.alfalahMethod}>
+        <MaterialIcons
+          name="account-balance-wallet"
+          size={22}
+          color="#FFFFFF"
+        />
+        <Text style={styles.alfalahMethodText}>
+          JazzCash Wallet
+        </Text>
+      </View>
+
+      <View style={styles.alfalahMethod}>
+        <MaterialIcons
+          name="qr-code-2"
+          size={22}
+          color="#FFFFFF"
+        />
+        <Text style={styles.alfalahMethodText}>
+          QR Code
+        </Text>
+      </View>
+    </View>
+  </View>
+</TouchableOpacity>
                   <LargeButton
                     handleSubmit={() => {
                       if (!SelectedAmount) {
                         renderToastError("Please select bundle first");
                         return;
                       }
-                      if (amount.amount >= Number(SelectedAmount)) {
+                      const walletAmount = Number(amount?.amount ?? 0);
+
+                      if (walletAmount >= Number(SelectedAmount)) {
                         setPaymentMethod("Wallet");
+                        setOrderid("");
                         handelSubmit("Wallet");
                       } else {
                         renderToastError(
@@ -790,232 +1104,674 @@ const Index = () => {
             </View>
           </ScrollView>
         </SafeAreaView>
-        <Loading isLoading={ugradeLoading || promoteLoading} text="Loading.." />
+        <Loading
+          isLoading={
+            ugradeLoading ||
+            promoteLoading ||
+            isVerifyingAlfalah ||
+            isCapturing
+          }
+          text="Loading.."
+        />
       </Modal>
-      <Modal visible={showShare} animationType="slide" transparent>
-        <SafeAreaView
-          style={{ flex: 1 }}
-          edges={[ "bottom", "left", "right"]}
+    <Modal
+  visible={showShare}
+  animationType="slide"
+  transparent
+  statusBarTranslucent
+  onRequestClose={() => setShowShare(false)}
+>
+  <SafeAreaView
+    style={{ flex: 1 }}
+    edges={["bottom", "left", "right"]}
+  >
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.5)",
+        justifyContent: "flex-end",
+      }}
+    >
+      <View
+        style={{
+          backgroundColor: "#fff",
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+
+          // IMPORTANT
+          height: "85%",
+
+          paddingTop: vs(18),
+          paddingHorizontal: hs(20),
+        }}
+      >
+        {/* Header */}
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: vs(15),
+          }}
         >
-          <View
+          <Text
             style={{
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.5)",
-              justifyContent: "flex-end",
+              fontSize: 18,
+              fontWeight: "600",
+              fontFamily: "PopinRegula",
             }}
           >
-            <View
+            Share Profile
+          </Text>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setShowShare(false)}
+          >
+            <Cross height={vs(24)} width={vs(24)} />
+          </TouchableOpacity>
+        </View>
+
+        {/* IMPORTANT: everything below header scrollable */}
+        <ScrollView
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled
+          contentContainerStyle={{
+            paddingBottom: vs(50),
+          }}
+        >
+          {/* Social Share */}
+          <View style={{ marginBottom: vs(20) }}>
+            <Text
               style={{
-                backgroundColor: "#fff",
-                borderTopLeftRadius: 20,
-                borderTopRightRadius: 20,
-                padding: 20,
-                minHeight: "80%",
+                fontSize: 14,
+                fontWeight: "600",
+                marginBottom: vs(12),
+                fontFamily: "PopinRegula",
               }}
             >
-              <View
+              Share via
+            </Text>
+
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+              }}
+            >
+              {/* WhatsApp */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => shareOnSocial("whatsapp")}
                 style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
+                  flex: 1,
                   alignItems: "center",
-                  marginBottom: 15,
                 }}
               >
-                <Text style={{ fontSize: 18, fontWeight: "600" }}>
-                  Share Post
+                <View
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 26,
+                    backgroundColor: "#25D366",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <FontAwesome
+                    name="whatsapp"
+                    size={27}
+                    color="#fff"
+                  />
+                </View>
+
+                <Text
+                  style={{
+                    fontSize: 10,
+                    marginTop: 6,
+                    fontFamily: "PopinRegula",
+                  }}
+                >
+                  WhatsApp
                 </Text>
+              </TouchableOpacity>
 
-                <TouchableOpacity
-                 activeOpacity={1}
-                onPress={() => setShowShare(false)}>
-                  <Cross height={vs(24)} width={vs(24)} />
-                </TouchableOpacity>
-              </View>
-
-              <Formik
-                initialValues={{
-                  recepient_email: "",
-                  message: "",
-                  link: `https://sweetghar.com/postRedirect?post_id=${id}&&type=${"profile"}&&profile_type=${Profiletype}`,
-                  post_id: id,
-                  type: Profiletype,
-                }}
-                validationSchema={Yup.object({
-                  recepient_email: Yup.string()
-                    .email("Invalid email")
-                    .required("Email is required"),
-                  message: Yup.string().required("Message is required"),
-                })}
-                onSubmit={async (values) => {
-                  try {
-                    const formData = new FormData();
-                    formData.append("email", values.recepient_email);
-                    formData.append("message", values.message);
-                    formData.append("link", values.link);
-                    formData.append("post_id", values.post_id);
-                    formData.append("type", "profile");
-                    formData.append("profile_type", Profiletype);
-                    console.log(formData);
-                    const result = await share_profileApi(formData).unwrap();
-                    if (result?.success) {
-                      renderToastSuccess(result.message);
-                      setShowShare(false);
-                    }
-                  } catch (error) {
-                    renderToastError("Failed to share post");
-                  }
+              {/* Facebook */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => shareOnSocial("facebook")}
+                style={{
+                  flex: 1,
+                  alignItems: "center",
                 }}
               >
-                {({
-                  handleChange,
-                  handleBlur,
-                  handleSubmit,
-                  values,
-                  touched,
-                  errors,
-                }) => (
-                  <View style={{ flex: 1 }}>
-                    <FormikInput
-                      name="recepient_email"
-                      placeholder="Recipient Email"
-                      value={values.recepient_email}
-                      onChangeText={handleChange("recepient_email")}
-                      onBlur={handleBlur("recepient_email")}
-                      touched={!!touched.recepient_email}
-                      errors={!!errors.recepient_email}
-                      errorText={errors.recepient_email}
-                      title={"Email"}
-                      required={true}
-                    />
+                <View
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 26,
+                    backgroundColor: "#1877F2",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <FontAwesome
+                    name="facebook"
+                    size={26}
+                    color="#fff"
+                  />
+                </View>
 
-                    <FormikInput
-                      name="message"
-                      placeholder="Write your message..."
-                      value={values.message}
-                      onChangeText={handleChange("message")}
-                      onBlur={handleBlur("message")}
-                      multiline
-                      touched={!!touched.message}
-                      errors={!!errors.message}
-                      errorText={errors.message}
-                      title={"Message"}
-                      required={true}
-                    />
+                <Text
+                  style={{
+                    fontSize: 10,
+                    marginTop: 6,
+                    fontFamily: "PopinRegula",
+                  }}
+                >
+                  Facebook
+                </Text>
+              </TouchableOpacity>
 
-                    <View
+              {/* X */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => shareOnSocial("twitter")}
+                style={{
+                  flex: 1,
+                  alignItems: "center",
+                }}
+              >
+                <View
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 26,
+                    backgroundColor: "#000",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "#fff",
+                      fontSize: 22,
+                      fontWeight: "700",
+                    }}
+                  >
+                    X
+                  </Text>
+                </View>
+
+                <Text
+                  style={{
+                    fontSize: 10,
+                    marginTop: 6,
+                    fontFamily: "PopinRegula",
+                  }}
+                >
+                  Twitter
+                </Text>
+              </TouchableOpacity>
+
+              {/* LinkedIn */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => shareOnSocial("linkedin")}
+                style={{
+                  flex: 1,
+                  alignItems: "center",
+                }}
+              >
+                <View
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 26,
+                    backgroundColor: "#0A66C2",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <FontAwesome
+                    name="linkedin"
+                    size={25}
+                    color="#fff"
+                  />
+                </View>
+
+                <Text
+                  style={{
+                    fontSize: 10,
+                    marginTop: 6,
+                    fontFamily: "PopinRegula",
+                  }}
+                >
+                  LinkedIn
+                </Text>
+              </TouchableOpacity>
+
+              {/* More */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => shareOnSocial("more")}
+                style={{
+                  flex: 1,
+                  alignItems: "center",
+                }}
+              >
+                <View
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 26,
+                    backgroundColor: "#6B7280",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons
+                    name="ellipsis-horizontal"
+                    size={28}
+                    color="#fff"
+                  />
+                </View>
+
+                <Text
+                  style={{
+                    fontSize: 10,
+                    marginTop: 6,
+                    fontFamily: "PopinRegula",
+                  }}
+                >
+                  More
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View
+              style={{
+                height: 1,
+                backgroundColor: "#e5e7eb",
+                marginTop: vs(20),
+                marginBottom: vs(10),
+              }}
+            />
+          </View>
+
+          {/* Email Share */}
+          <Formik
+            initialValues={{
+              recepient_email: "",
+              message: "",
+              link: `https://sweetghar.com/postRedirect?post_id=${id}&&type=profile&&profile_type=${Profiletype}`,
+              post_id: id,
+              type: Profiletype,
+            }}
+            validationSchema={Yup.object({
+              recepient_email: Yup.string()
+                .email("Invalid email")
+                .required("Email is required"),
+
+              message: Yup.string()
+                .required("Message is required"),
+            })}
+            onSubmit={async (values) => {
+              try {
+                const formData = new FormData();
+
+                formData.append(
+                  "email",
+                  values.recepient_email
+                );
+
+                formData.append(
+                  "message",
+                  values.message
+                );
+
+                formData.append(
+                  "link",
+                  values.link
+                );
+
+                formData.append(
+                  "post_id",
+                  values.post_id.toString()
+                );
+
+                formData.append(
+                  "type",
+                  "profile"
+                );
+
+                formData.append(
+                  "profile_type",
+                  Profiletype
+                );
+
+                const result =
+                  await share_profileApi(
+                    formData
+                  ).unwrap();
+
+                if (result?.success) {
+                  renderToastSuccess(
+                    result.message
+                  );
+
+                  setShowShare(false);
+                }
+              } catch (error) {
+                console.log(
+                  "Share profile error:",
+                  error
+                );
+
+                renderToastError(
+                  "Failed to share profile"
+                );
+              }
+            }}
+          >
+            {({
+              handleChange,
+              handleBlur,
+              handleSubmit,
+              values,
+              touched,
+              errors,
+            }) => (
+              // IMPORTANT:
+              // yahan flex:1 mat lagana
+              <View>
+                <FormikInput
+                  name="recepient_email"
+                  placeholder="Recipient Email"
+                  value={values.recepient_email}
+                  onChangeText={handleChange(
+                    "recepient_email"
+                  )}
+                  onBlur={handleBlur(
+                    "recepient_email"
+                  )}
+                  touched={
+                    !!touched.recepient_email
+                  }
+                  errors={
+                    !!errors.recepient_email
+                  }
+                  errorText={
+                    errors.recepient_email
+                  }
+                  title="Email"
+                  required
+                />
+
+                <FormikInput
+                  name="message"
+                  placeholder="Write your message..."
+                  value={values.message}
+                  onChangeText={handleChange(
+                    "message"
+                  )}
+                  onBlur={handleBlur(
+                    "message"
+                  )}
+                  multiline
+                  touched={!!touched.message}
+                  errors={!!errors.message}
+                  errorText={errors.message}
+                  title="Message"
+                  required
+                />
+
+                {/* Info */}
+                <View
+                  style={{
+                    backgroundColor: "#f5f5f5",
+                    padding: 12,
+                    borderRadius: 10,
+                    marginTop: vs(10),
+                    marginBottom: vs(20),
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontWeight: "600",
+                    }}
+                  >
+                    Sharing this profile
+                  </Text>
+
+                  <Text
+                    style={{
+                      color: "#666",
+                      fontSize: 12,
+                      marginTop: 3,
+                    }}
+                  >
+                    Profile link will be sent
+                  </Text>
+                </View>
+
+                {/* Shareable Link */}
+                <View
+                  style={{
+                    backgroundColor: "#f5f6f8",
+                    borderRadius: 12,
+                    padding: 12,
+                    marginTop: vs(5),
+                    borderWidth: 1,
+                    borderColor: "#e5e7eb",
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      color: "#6b7280",
+                      marginBottom: 6,
+                      fontFamily:
+                        "PopinRegula",
+                    }}
+                  >
+                    Shareable Link
+                  </Text>
+
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      backgroundColor: "#fff",
+                      borderRadius: 10,
+                      paddingHorizontal: 10,
+                      paddingVertical: 8,
+                      borderWidth: 1,
+                      borderColor: "#e5e7eb",
+                    }}
+                  >
+                    <TextInput
+                      editable={false}
+                      value={values.link}
+                      numberOfLines={1}
                       style={{
-                        backgroundColor: "#f5f5f5",
-                        padding: 12,
-                        borderRadius: 10,
-                        marginTop: 10,
-                        marginBottom: 20,
+                        flex: 1,
+                        fontSize: 12,
+                        color: "#374151",
+                        fontFamily:
+                          "PopinRegula",
                       }}
-                    >
-                      <Text style={{ fontWeight: "600" }}>
-                        Sharing this post
-                      </Text>
-                      <Text style={{ color: "#666", fontSize: 12 }}>
-                        Property / Community link will be sent
-                      </Text>
-                    </View>
-                    <View
+                      ellipsizeMode="middle"
+                    />
+
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={async () => {
+                        await Clipboard.setStringAsync(
+                          values.link
+                        );
+
+                        renderToastSuccess(
+                          "Link copied"
+                        );
+                      }}
                       style={{
-                        backgroundColor: "#f5f6f8",
-                        borderRadius: 12,
-                        padding: 12,
-                        marginTop: 15,
-                        borderWidth: 1,
-                        borderColor: "#e5e7eb",
+                        backgroundColor:
+                          "#0f766e",
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 8,
+                        marginLeft: 8,
                       }}
                     >
                       <Text
                         style={{
-                          fontSize: 13,
-                          color: "#6b7280",
-                          marginBottom: 6,
-                          fontFamily: "PopinRegula",
+                          color: "#fff",
+                          fontSize: 12,
+                          fontWeight: "600",
+                          fontFamily:
+                            "PopinRegula",
                         }}
                       >
-                        Shareable Link
+                        Copy
                       </Text>
-
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          backgroundColor: "#fff",
-                          borderRadius: 10,
-                          paddingHorizontal: 10,
-                          paddingVertical: 8,
-                          borderWidth: 1,
-                          borderColor: "#e5e7eb",
-                        }}
-                      >
-                        <TextInput
-                          editable={false}
-                          value={values.link}
-                          numberOfLines={1}
-                          style={{
-                            flex: 1,
-                            fontSize: 12,
-                            color: "#374151",
-                            fontFamily: "PopinRegula",
-                          }}
-                          ellipsizeMode="middle"
-                        />
-
-                        <TouchableOpacity
-                         activeOpacity={1}
-                          onPress={async () => {
-                            await Clipboard.setStringAsync(values.link);
-                            renderToastSuccess("Link copied");
-                          }}
-                          style={{
-                            backgroundColor: "#0f766e",
-                            paddingHorizontal: 12,
-                            paddingVertical: 6,
-                            borderRadius: 8,
-                            marginLeft: 8,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              color: "#fff",
-                              fontSize: 12,
-                              fontWeight: "600",
-                              fontFamily: "PopinRegula",
-                            }}
-                          >
-                            Copy
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-
-                    <LargeButton text="Send" handleSubmit={handleSubmit} />
+                    </TouchableOpacity>
                   </View>
-                )}
-              </Formik>
-            </View>
-          </View>
-        </SafeAreaView>
-        <Loading isLoading={sharing} text="Sharing..." />
-      </Modal>
-      <PapPalPayment
+                </View>
+
+                {/* Send */}
+                <View
+                  style={{
+                    marginTop: vs(20),
+                    marginBottom: vs(30),
+                  }}
+                >
+                  <LargeButton
+                    text="Send"
+                    handleSubmit={handleSubmit}
+                  />
+                </View>
+              </View>
+            )}
+          </Formik>
+        </ScrollView>
+      </View>
+    </View>
+  </SafeAreaView>
+
+  <Loading
+    isLoading={sharing}
+    text="Sharing..."
+  />
+</Modal>
+      <AlfalahPayment
         amount={SelectedAmount}
-        onPress={(order_id, setApproveUrl) => {
+        visible={visible}
+        setVisible={setvisible}
+        onPress={async (orderId, setApproveUrl) => {
           try {
-            setPaymentMethod("Paypal");
-            setOrderid(order_id);
-            handelSubmit("Paypal");
-            setvisible(false);
+            console.log(
+              "Bank payment page success:",
+              orderId
+            );
+
+            /**
+             * ==========================================
+             * STEP 1
+             * VERIFY WITH BANK BEFORE PROFILE UPGRADE
+             * ==========================================
+             */
+            const verification =
+              await verifyAlfalahPayment({
+                order_id: String(orderId),
+              }).unwrap();
+
+            console.log(
+              "Bank Alfalah verification:",
+              verification
+            );
+
+            if (!verification?.success) {
+              renderToastError(
+                verification?.message ||
+                  "Unable to verify payment."
+              );
+              return;
+            }
+
+            /**
+             * Extra safety: bank must explicitly say PAID.
+             */
+            if (
+              String(
+                verification.status
+              ).toUpperCase() !== "PAID"
+            ) {
+              renderToastError(
+                "Bank payment is not marked as paid."
+              );
+              return;
+            }
+
+            console.log(
+              "PAYMENT VERIFIED BEFORE PROFILE UPGRADE"
+            );
+
+            /**
+             * ==========================================
+             * STEP 2
+             * SAVE PAYMENT DATA
+             * ==========================================
+             */
+            setPaymentMethod("Bank Alfalah");
+            setOrderid(String(orderId));
+
+            /**
+             * ==========================================
+             * STEP 3
+             * CLOSE BANK WEBVIEW
+             * ==========================================
+             */
             setApproveUrl(null);
-          } catch {
-            renderToastError("Some thing went rong");
+            setvisible(false);
+
+            /**
+             * ==========================================
+             * STEP 4
+             * UPGRADE / PROMOTE PROFILE
+             * ==========================================
+             */
+            setTimeout(() => {
+              handelSubmit(
+                "Bank Alfalah",
+                String(orderId)
+              );
+            }, 200);
+          } catch (error: any) {
+            console.log(
+              "Bank Alfalah verification error:",
+              error
+            );
+
+            console.log(
+              "Verification response:",
+              error?.data
+            );
+
+            renderToastError(
+              error?.data?.message ||
+                "Payment could not be verified. Profile was not upgraded."
+            );
+
+            /**
+             * IMPORTANT:
+             * Do NOT call handelSubmit here.
+             */
           }
         }}
-        setVisible={setvisible}
-        visible={visible}
       />
     </>
   );
@@ -1032,12 +1788,69 @@ const styles = StyleSheet.create({
     backgroundColor: "gray",
   },
   paypalMainButton: {
-    backgroundColor: Colors.light.Yellow,
-    borderRadius: ms(8),
-    height: vs(48),
-    justifyContent: "center",
-    alignItems: "center",
+  backgroundColor: "#c21c1c",
+  borderRadius: 14,
+  paddingVertical: 16,
+  paddingHorizontal: 15,
+  elevation: 3,
+  shadowColor: "#000",
+  shadowOffset: {
+    width: 0,
+    height: 3,
   },
+  shadowOpacity: 0.15,
+  shadowRadius: 5,
+},
+
+paypalContent: {
+  flexDirection: "column",
+},
+
+alfalahHeader: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 12,
+},
+
+paypalText: {
+  color: "#FFFFFF",
+  fontSize: 16,
+  fontWeight: "700",
+},
+
+alfalahSubtitle: {
+  color: "#D8EDE4",
+  fontSize: 12,
+  marginTop: 4,
+},
+
+alfalahDivider: {
+  height: 1,
+  backgroundColor: "rgba(255,255,255,0.25)",
+  marginVertical: 14,
+},
+
+alfalahMethods: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 8,
+},
+
+alfalahMethod: {
+  flex: 1,
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+},
+
+alfalahMethodText: {
+  color: "#FFFFFF",
+  fontSize: 10,
+  fontWeight: "600",
+  textAlign: "center",
+},
+  
   businessCard: {
     marginHorizontal: hs(10),
     padding: 15,
@@ -1153,7 +1966,7 @@ const styles = StyleSheet.create({
     marginLeft: hs(10),
     fontSize: ms(14),
     fontWeight: "600",
-    color: "#003087",
+    color: "white",
     fontFamily: "PopinRegula",
   },
   card2: {

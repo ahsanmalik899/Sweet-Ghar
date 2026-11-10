@@ -78,7 +78,7 @@ setfieldvalue?.('ad_life',days);
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Promotion Pricing</Text>
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>£{pricePerDay}/day</Text>
+          <Text style={styles.badgeText}>PKR{pricePerDay}/day</Text>
         </View>
       </View>
 
@@ -168,13 +168,13 @@ setfieldvalue?.('ad_life',days);
         <View style={styles.summaryDividerV} />
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Rate</Text>
-          <Text style={styles.summaryValue}>£{formatPrice(pricePerDay)}/day</Text>
+          <Text style={styles.summaryValue}>PKR{formatPrice(pricePerDay)}/day</Text>
         </View>
         <View style={styles.summaryDividerV} />
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Total</Text>
           <Text style={[styles.summaryValue, styles.totalPrice]}>
-            £{formatPrice(totalPrice)}
+            PKR {formatPrice(totalPrice)}
           </Text>
         </View>
       </View>

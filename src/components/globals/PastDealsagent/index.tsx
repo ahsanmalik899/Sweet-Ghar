@@ -247,7 +247,7 @@ const PastDealsagent = ({
                     fontFamily: "PopinRegula",
                   }}
                 >
-                  £{item.type==="community"?formatPrice(item.property_types?.price1):formatPrice(item.price1)}
+                  PKR {item.type==="community"?formatPrice(item.property_types?.price1):formatPrice(item.price1)}
                 </Text>
               </View>
               <View

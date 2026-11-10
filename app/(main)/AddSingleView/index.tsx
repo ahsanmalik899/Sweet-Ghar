@@ -159,7 +159,7 @@ const index = () => {
 
               {data?.post?.community_price?.length > 0 && (
                 <Text style={{ color: Colors.light.red, fontWeight: "600",fontFamily: "PopinRegula", }}>
-                  From £ {data.post.community_price[0]} To £{" "}
+                  From PKR {data.post.community_price[0]} To PKR{" "}
                   {
                     data.post.community_price[
                       data.post.community_price.length - 1
@@ -190,7 +190,7 @@ const index = () => {
                   fontFamily: "PopinRegula",
                 }}
               >
-                £ {data?.post?.asking_price ?? 0}
+                PKR {data?.post?.asking_price ?? 0}
                 {type === "rent" ? `/${data?.post?.rent_type ?? ""}` : ""}
               </Text>
             </View>
@@ -971,7 +971,7 @@ const index = () => {
                       color: "white",
                     }}
                   >
-                    £ {monthlyPayment}
+                    PKR {monthlyPayment}
                   </Text>
                 </View>
                 <Text className="mt-4">
@@ -1331,7 +1331,7 @@ const index = () => {
         initialValues={{
           recepient_email: "",
           message: "",
-          link:`https://sweetghar.com/postRedirect?post_id=${type==="community"?data?.post?.post_community_id:data?.post?.post_property_id}&&type=${type==="community"?"community":"property"}`,
+          link:`https://www.sweetghar.com/postRedirect?post_id=${type==="community"?data?.post?.post_community_id:data?.post?.post_property_id}&&type=${type==="community"?"community":"property"}`,
           post_id:type==="community"?data?.post?.post_community_id:data?.post?.post_property_id,
           type:type,
         }}

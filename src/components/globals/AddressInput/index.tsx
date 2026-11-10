@@ -69,8 +69,8 @@ export const AdressInput = ({
   const mapRef = useRef<MapView>(null);
   const [mapType, setMapType] = useState<MapType>("standard");
   const [region, setRegion] = useState<Region>({
-    latitude: Number(latValue) || 51.5074,
-    longitude: Number(longValue) || -0.1278,
+    latitude: Number(latValue) || 30.3753,
+    longitude: Number(longValue) || 69.3451,
     latitudeDelta: 0.01,
     longitudeDelta: 0.01,
   });
@@ -103,8 +103,8 @@ export const AdressInput = ({
         findComponent("administrative_area_level_1")?.short_name || "";
       const zipCode = findComponent("postal_code")?.long_name || "";
 
-      const latitude = result?.result?.geometry?.location?.lat ?? 51.5074;
-      const longitude = result?.result?.geometry?.location?.lng ?? -0.1278;
+      const latitude = result?.result?.geometry?.location?.lat ?? 30.3753;
+      const longitude = result?.result?.geometry?.location?.lng ?? 69.3451;
 
       setValue(lat, latitude);
       setValue(long, longitude);

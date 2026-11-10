@@ -368,7 +368,7 @@ const receivedEndReachedLock = useRef(false);
             {item.min_price && item.max_price && (
               <View style={styles.tag}>
                 <Text style={styles.tagText}>
-                  £{formatPrice(item.min_price)} - £
+                  PKR{formatPrice(item.min_price)} - PKR
                   {formatPrice(item.max_price)}
                 </Text>
               </View>
@@ -1130,8 +1130,8 @@ useEffect(() => {
                               selectedChatItem.max_price && (
                                 <View style={styles.tag}>
                                   <Text style={styles.tagText}>
-                                    £{formatPrice(selectedChatItem.min_price)} -
-                                    £{formatPrice(selectedChatItem.max_price)}
+                                    PKR{formatPrice(selectedChatItem.min_price)} -
+                                    PKR{formatPrice(selectedChatItem.max_price)}
                                   </Text>
                                 </View>
                               )}

@@ -158,7 +158,7 @@ const renderItem = ({ item, index }) => {
                   fontFamily: "PopinRegular",
                 }}
               >
-                 £ {formatPrice(item?.data?.asking_price)}
+                 PKR {formatPrice(item?.data?.asking_price)}
                 {item?.data?.property_for === "rent" && (
                   <Text
                     style={{

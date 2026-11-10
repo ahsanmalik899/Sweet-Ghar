@@ -1,9 +1,9 @@
 {
   "expo": {
     "scheme": "sweetghar",
-    "name": "Sweet Ghar",
+    "name": "SweetGhar",
     "slug": "sweet-ghar",
-    "version": "1.0.1",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/icons/app-icon 1024x1024.png",
     "newArchEnabled": true,
@@ -35,14 +35,14 @@
     "android": {
       "googleServicesFile": "./google-services.json",
       "softwareKeyboardLayoutMode": "pan",
-      "versionCode": 2,
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icons/app-icon 1024x1024.png",
         "backgroundColor": "#ffffff"
       },
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyBaSaRVNgsBZTflG9WrJ7AwVm2cdJ5NerE"
+          "apiKey": "AIzaSyDSMUvHsKNRuzj67lJ3HZrzTtFzRlVgPkU"
         }
       },
       "intentFilters": [
@@ -52,7 +52,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "sweetghar.com",
+              "host": "www.sweetghar.com",
               "pathPrefix": "/CreateNewpass"
             }
           ],
@@ -67,7 +67,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "sweetghar.com",
+              "host": "www.sweetghar.com",
               "pathPrefix": "/Account"
             }
           ],
@@ -82,7 +82,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "sweetghar.com",
+              "host": "www.sweetghar.com",
               "pathPrefix": "/NewsFeedSingelView"
             }
           ],
@@ -97,7 +97,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "sweetghar.com",
+              "host": "www.sweetghar.com",
               "pathPrefix": "/AddSingleView"
             }
           ],
@@ -112,7 +112,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "sweetghar.com",
+              "host": "www.sweetghar.com",
               "pathPrefix": "/postRedirect"
             }
           ],
@@ -133,13 +133,38 @@
       "expo-font",
       "expo-asset",
       "expo-web-browser",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "react-native-share",
+        {
+          "ios": [
+            "whatsapp",
+            "fb",
+            "twitter"
+          ],
+          "android": [
+            "com.whatsapp",
+            "com.facebook.katana",
+            "com.linkedin.android",
+            "com.twitter.android"
+          ]
+        }
+      ],
+    [
+  "expo-build-properties",
+  {
+    "android": {
+      "enableMinifyInReleaseBuilds": true,
+      "enableShrinkResourcesInReleaseBuilds": true
+    }
+  }
+]
     ],
     "extra": {
       "router": {
         "origin": false
       },
-      "GOOGLE_MAPS_API_KEY": "AIzaSyBaSaRVNgsBZTflG9WrJ7AwVm2cdJ5NerE",
+      "GOOGLE_MAPS_API_KEY": "AIzaSyDSMUvHsKNRuzj67lJ3HZrzTtFzRlVgPkU",
       "eas": {
         "projectId": "ed7335d6-7a0e-4200-90db-3f7a4f6ab4c0"
       }

@@ -1,6 +1,7 @@
 import FormandLand from "@assets/Buy/formLandForSale.svg";
-import Homes from "@assets/Rent/Homes.svg";
+import Holydays from '@assets/icons/PostProperty/holydays.svg';
 import Commercial from "@assets/Rent/commercial.svg";
+import Homes from "@assets/Rent/Homes.svg";
 import HeaderWithBack from "@src/components/globals/HeaderWithBack";
 import LargeButton from "@src/components/globals/LaregeButton";
 import SideBarCard from "@src/components/globals/SideBarCard";
@@ -28,6 +29,7 @@ const index = () => {
           />
           
         </View>
+        <View className="flex-row justify-between">
          <SideBarCard
             Svg={FormandLand}
             text="Farm & Land"
@@ -37,6 +39,20 @@ const index = () => {
           })}}
             type={""}
           />
+                  <SideBarCard
+  Svg={Holydays}
+  text="Holidays"
+  onPress={() => {
+    router.navigate({
+      pathname: "/(main)/BuyFilter",
+      params: {
+        type: "Holidays",
+        property_for: "rent",
+      },
+    });
+  }}
+  type={""}
+/></View>
       </View>
         <View style={{justifyContent: 'flex-end',marginTop:'auto',marginHorizontal:hs(20),marginBottom:hs(20)}}>
               <LargeButton text="Raise query to Rent" handleSubmit={() =>router.navigate({

@@ -2,13 +2,12 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCUFlrS0nsXNkNAuiWbuPC50GmgHapqPaU",
-  authDomain: "homeilove-uk.firebaseapp.com",
-  projectId: "homeilove-uk",
-  storageBucket: "homeilove-uk.firebasestorage.app",
-  messagingSenderId: "165943793003",
-  appId: "1:165943793003:web:6580dd31bebc121060282e",
-  measurementId: "G-DWNPCP33L2"
+  apiKey: "AIzaSyBclPIaJMC0GqHZ89GQFN0jI7n67e6Wk4g",
+  authDomain: "sweetghar-c8520.firebaseapp.com",
+  projectId: "sweetghar-c8520",
+  storageBucket: "sweetghar-c8520.firebasestorage.app",
+  messagingSenderId: "798901347695",
+  appId: "1:798901347695:web:3c2d1fdb7caa334e2fb49a"
 };
 
 const app=initializeApp(firebaseConfig);
